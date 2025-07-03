@@ -19,28 +19,24 @@ const Layout = ({ children }) => {
   ]
 
   return (
-    <div className="h-screen flex overflow-hidden bg-gray-100">
+    <div className="layout-container">
       {/* Sidebar */}
-      <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0`}>
-        <div className="flex items-center justify-between h-16 bg-orange-500 px-4">
-          <h1 className="text-white text-lg font-semibold">Sanjeevani Services</h1>
+      <div className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
+        <div className="sidebar-header">
+          <h1 className="sidebar-title">Sanjeevani Services</h1>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden text-white"
+            className="sidebar-close"
           >
             ✕
           </button>
         </div>
-        <nav className="mt-5 px-2">
-          <div className="space-y-1">
+        <nav className="sidebar-nav">
+          <div>
             {navigation.map((item) => (
               <Link key={item.name} href={item.href}>
-                <div className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md cursor-pointer ${
-                  router.pathname === item.href
-                    ? 'bg-orange-100 text-orange-700'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                }`}>
-                  <span className="mr-3">{item.icon}</span>
+                <div className={`nav-item ${router.pathname === item.href ? 'active' : ''}`}>
+                  <span className="nav-item-icon">{item.icon}</span>
                   {item.name}
                 </div>
               </Link>
@@ -50,20 +46,20 @@ const Layout = ({ children }) => {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className={`main-content ${!sidebarOpen ? 'sidebar-closed' : ''}`}>
         {/* Top bar */}
-        <div className="bg-white shadow-sm px-4 py-2 flex items-center justify-between lg:px-6">
+        <div className="top-bar">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="lg:hidden text-gray-600"
+            className="menu-button"
           >
             ☰
           </button>
-          <h2 className="text-xl font-semibold text-gray-900">Sanjeevani Services - Management Dashboard</h2>
+          <h2 className="page-title">Sanjeevani Services - Management Dashboard</h2>
         </div>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+        <main className="page-content">
           {children}
         </main>
       </div>

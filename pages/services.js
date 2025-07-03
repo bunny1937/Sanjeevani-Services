@@ -40,22 +40,22 @@ const Services = () => {
 
   return (
     <div>
-      <div className="mb-6">
-        <div className="flex justify-between items-center">
+      <div className="page-header">
+        <div className="page-header-content">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Services</h1>
-            <p className="text-gray-600">Manage the services offered by Sanjeevani Services</p>
+            <h1>Services</h1>
+            <p>Manage the services offered by Sanjeevani Services</p>
           </div>
-          <div className="flex space-x-3">
+          <div className="page-actions">
             <button
               onClick={handleRemoveDuplicates}
-              className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 flex items-center"
+              className="btn btn-secondary"
             >
               🔄 Remove Duplicates
             </button>
             <button
               onClick={handleAddService}
-              className="bg-orange-500 text-white px-4 py-2 rounded-md hover:bg-orange-600 flex items-center"
+              className="btn btn-primary"
             >
               ➕ Add Service
             </button>
@@ -64,81 +64,91 @@ const Services = () => {
       </div>
 
       {/* Stats */}
-      <div className="bg-white rounded-lg shadow p-6 mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-gray-600">Active Services</p>
-            <p className="text-2xl font-bold text-blue-600">{activeServices}</p>
-            <p className="text-xs text-gray-500">Active services currently offered</p>
-          </div>
-          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-            <span className="text-xs">🔧</span>
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-card-content">
+            <div className="stat-info">
+              <p>Active Services</p>
+              <p className="stat-value">{activeServices}</p>
+              <p className="stat-description">Active services currently offered</p>
+            </div>
+            <div className="stat-icon blue">
+              <span>🔧</span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Services List */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900">Active Services List</h2>
+      <div className="table-container">
+        <div className="card-header">
+          <h2>Active Services List</h2>
         </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div style={{ overflowX: 'auto' }}>
+          <table className="table">
+            <thead>
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th>Service Name</th>
+                <th>Description</th>
+                <th>Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="3" className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan="3" className="text-center">
                     Loading services...
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan="3" className="px-6 py-4 text-center text-red-500">
+                  <td colSpan="3" className="text-center error">
                     Error loading services: {error}
                   </td>
                 </tr>
               ) : services.length === 0 ? (
                 <>
                   <tr>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Pest Control</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Default service for Pest Control</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <button className="text-blue-600 hover:text-blue-900 mr-3">✏️</button>
-                      <button className="text-red-600 hover:text-red-900">🗑️</button>
+                    <td>Pest Control</td>
+                    <td>Default service for Pest Control</td>
+                    <td>
+                      <div className="table-actions">
+                        <button title="Edit">✏️</button>
+                        <button title="Delete">🗑️</button>
+                      </div>
                     </td>
                   </tr>
                   <tr>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Water Tank Cleaning</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Default service for Water Tank Cleaning</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <button className="text-blue-600 hover:text-blue-900 mr-3">✏️</button>
-                      <button className="text-red-600 hover:text-red-900">🗑️</button>
+                    <td>Water Tank Cleaning</td>
+                    <td>Default service for Water Tank Cleaning</td>
+                    <td>
+                      <div className="table-actions">
+                        <button title="Edit">✏️</button>
+                        <button title="Delete">🗑️</button>
+                      </div>
                     </td>
                   </tr>
                   <tr>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Motor Repairing & Rewinding</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Default service for Motor Repairing</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <button className="text-blue-600 hover:text-blue-900 mr-3">✏️</button>
-                      <button className="text-red-600 hover:text-red-900">🗑️</button>
+                    <td>Motor Repairing & Rewinding</td>
+                    <td>Default service for Motor Repairing</td>
+                    <td>
+                      <div className="table-actions">
+                        <button title="Edit">✏️</button>
+                        <button title="Delete">🗑️</button>
+                      </div>
                     </td>
                   </tr>
                 </>
               ) : (
                 (services || []).map((service) => (
                   <tr key={service._id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{service.name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{service.description}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <button className="text-blue-600 hover:text-blue-900 mr-3">✏️</button>
-                      <button className="text-red-600 hover:text-red-900">🗑️</button>
+                    <td>{service.name}</td>
+                    <td>{service.description}</td>
+                    <td>
+                      <div className="table-actions">
+                        <button title="Edit">✏️</button>
+                        <button title="Delete">🗑️</button>
+                      </div>
                     </td>
                   </tr>
                 ))
