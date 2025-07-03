@@ -1,5 +1,5 @@
-
 import { useState, useEffect } from 'react'
+import styles from './Dashboard.module.css'
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -29,16 +29,18 @@ const Dashboard = () => {
     }
   }
 
-  const StatCard = ({ title, value, subtitle, color = 'blue' }) => (
-    <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className={`text-2xl font-bold text-${color}-600`}>₹{value}</p>
-          <p className="text-xs text-gray-500">{subtitle}</p>
+  const StatCard = ({ title, value, subtitle, color = 'blue', icon = '₹' }) => (
+    <div className={styles.statCard}>
+      <div className={styles.statCardContent}>
+        <div className={styles.statInfo}>
+          <p>{title}</p>
+          <p className={`${styles.statValue} ${styles[color]}`}>
+            {typeof value === 'number' ? `₹${value.toLocaleString()}` : value}
+          </p>
+          <p className={styles.statDescription}>{subtitle}</p>
         </div>
-        <div className={`w-8 h-8 bg-${color}-100 rounded-full flex items-center justify-center`}>
-          <span className="text-xs">₹</span>
+        <div className={`${styles.statIcon} ${styles[color]}`}>
+          <span>{icon}</span>
         </div>
       </div>
     </div>
@@ -46,117 +48,84 @@ const Dashboard = () => {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600">Welcome to Sanjeevani Services - Your business overview</p>
+      <div className={styles.pageHeader}>
+        <h1>Dashboard</h1>
+        <p>Welcome to Sanjeevani Services - Your business overview</p>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className={styles.statsGrid}>
         <StatCard
           title="Monthly Revenue"
           value={stats.monthlyRevenue}
           subtitle="Revenue for current month"
           color="blue"
+          icon="💰"
         />
         <StatCard
           title="Net Profit"
           value={stats.netProfit}
           subtitle="Monthly revenue minus expenses"
           color="green"
+          icon="📈"
         />
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Properties</p>
-              <p className="text-2xl font-bold text-blue-600">{stats.totalProperties}</p>
-              <p className="text-xs text-gray-500">Properties in database</p>
-            </div>
-            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-              <span className="text-xs">🏠</span>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Upcoming Reminders</p>
-              <p className="text-2xl font-bold text-orange-600">{stats.upcomingReminders}</p>
-              <p className="text-xs text-gray-500">Properties due for service</p>
-            </div>
-            <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-              <span className="text-xs">⏰</span>
-            </div>
-          </div>
-        </div>
+        <StatCard
+          title="Total Properties"
+          value={stats.totalProperties}
+          subtitle="Properties in database"
+          color="blue"
+          icon="🏠"
+        />
+        <StatCard
+          title="Upcoming Reminders"
+          value={stats.upcomingReminders}
+          subtitle="Properties due for service"
+          color="orange"
+          icon="⏰"
+        />
       </div>
 
       {/* Service Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Water Tank Cleaning</p>
-              <p className="text-2xl font-bold text-blue-600">₹{stats.waterTankCleaning}</p>
-              <p className="text-xs text-gray-500">Monthly revenue from water tank services</p>
-            </div>
-            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-              <span className="text-xs">🚿</span>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Pest Control</p>
-              <p className="text-2xl font-bold text-green-600">₹{stats.pestControl}</p>
-              <p className="text-xs text-gray-500">Monthly revenue from pest control</p>
-            </div>
-            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-              <span className="text-xs">🐛</span>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Active Labor</p>
-              <p className="text-2xl font-bold text-purple-600">{stats.activeLabor}</p>
-              <p className="text-xs text-gray-500">To be defined</p>
-            </div>
-            <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-              <span className="text-xs">👷</span>
-            </div>
-          </div>
-        </div>
+      <div className={styles.serviceStatsGrid}>
+        <StatCard
+          title="Water Tank Cleaning"
+          value={stats.waterTankCleaning}
+          subtitle="Monthly revenue from water tank services"
+          color="blue"
+          icon="🚿"
+        />
+        <StatCard
+          title="Pest Control"
+          value={stats.pestControl}
+          subtitle="Monthly revenue from pest control"
+          color="green"
+          icon="🐛"
+        />
+        <StatCard
+          title="Active Labor"
+          value={stats.activeLabor}
+          subtitle="To be defined"
+          color="purple"
+          icon="👷"
+        />
       </div>
 
       {/* Financial Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-              <p className="text-2xl font-bold text-green-600">₹{stats.totalRevenue}</p>
-              <p className="text-xs text-gray-500">All time revenue from services</p>
-            </div>
-            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-              <span className="text-xs">💰</span>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Monthly Expenses</p>
-              <p className="text-2xl font-bold text-red-600">₹{stats.monthlyExpenses}</p>
-              <p className="text-xs text-gray-500">Expenses for current month</p>
-            </div>
-            <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-              <span className="text-xs">📊</span>
-            </div>
-          </div>
-        </div>
+      <div className={styles.financialGrid}>
+        <StatCard
+          title="Total Revenue"
+          value={stats.totalRevenue}
+          subtitle="All time revenue from services"
+          color="green"
+          icon="💰"
+        />
+        <StatCard
+          title="Monthly Expenses"
+          value={stats.monthlyExpenses}
+          subtitle="Expenses for current month"
+          color="red"
+          icon="📊"
+        />
       </div>
     </div>
   )

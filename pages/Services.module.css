@@ -1,0 +1,131 @@
+
+/* Services Page Styles */
+.pageHeader {
+  margin-bottom: 24px;
+}
+
+.pageHeaderContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pageHeader h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 4px;
+}
+
+.pageHeader p {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.pageActions {
+  display: flex;
+  gap: 12px;
+}
+
+/* Buttons */
+.btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.btnPrimary {
+  background-color: #f97316;
+  color: white;
+}
+
+.btnPrimary:hover {
+  background-color: #ea580c;
+}
+
+.btnSecondary {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.btnSecondary:hover {
+  background-color: #2563eb;
+}
+
+/* Table Styles */
+.tableContainer {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table thead {
+  background-color: #f9fafb;
+}
+
+.table th {
+  padding: 12px 24px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.table td {
+  padding: 16px 24px;
+  border-top: 1px solid #e5e7eb;
+  font-size: 14px;
+}
+
+.table tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+.loadingState {
+  text-align: center;
+  padding: 48px;
+  color: #6b7280;
+}
+
+.errorState {
+  text-align: center;
+  padding: 48px;
+  color: #ef4444;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .pageHeaderContent {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .pageActions {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .tableContainer {
+    overflow-x: auto;
+  }
+  
+  .table {
+    min-width: 600px;
+  }
+}

@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
+import styles from './Layout.module.css'
 
 const Layout = ({ children }) => {
   const router = useRouter()
@@ -19,24 +20,24 @@ const Layout = ({ children }) => {
   ]
 
   return (
-    <div className="layout-container">
+    <div className={styles.layoutContainer}>
       {/* Sidebar */}
-      <div className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-        <div className="sidebar-header">
-          <h1 className="sidebar-title">Sanjeevani Services</h1>
+      <div className={`${styles.sidebar} ${sidebarOpen ? styles.open : ''}`}>
+        <div className={styles.sidebarHeader}>
+          <h1 className={styles.sidebarTitle}>Sanjeevani Services</h1>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="sidebar-close"
+            className={styles.sidebarClose}
           >
             ✕
           </button>
         </div>
-        <nav className="sidebar-nav">
+        <nav className={styles.sidebarNav}>
           <div>
             {navigation.map((item) => (
               <Link key={item.name} href={item.href}>
-                <div className={`nav-item ${router.pathname === item.href ? 'active' : ''}`}>
-                  <span className="nav-item-icon">{item.icon}</span>
+                <div className={`${styles.navItem} ${router.pathname === item.href ? styles.active : ''}`}>
+                  <span className={styles.navItemIcon}>{item.icon}</span>
                   {item.name}
                 </div>
               </Link>
@@ -46,20 +47,20 @@ const Layout = ({ children }) => {
       </div>
 
       {/* Main content */}
-      <div className={`main-content ${!sidebarOpen ? 'sidebar-closed' : ''}`}>
+      <div className={`${styles.mainContent} ${!sidebarOpen ? styles.sidebarClosed : ''}`}>
         {/* Top bar */}
-        <div className="top-bar">
+        <div className={styles.topBar}>
           <button
             onClick={() => setSidebarOpen(true)}
-            className="menu-button"
+            className={styles.menuButton}
           >
             ☰
           </button>
-          <h2 className="page-title">Sanjeevani Services - Management Dashboard</h2>
+          <h2 className={styles.pageTitle}>Sanjeevani Services - Management Dashboard</h2>
         </div>
 
         {/* Page content */}
-        <main className="page-content">
+        <main className={styles.pageContent}>
           {children}
         </main>
       </div>
