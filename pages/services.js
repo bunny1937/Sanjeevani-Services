@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 const Services = () => {
   const [services, setServices] = useState([])
   const [activeServices, setActiveServices] = useState(3)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     fetchServices()
@@ -11,11 +13,20 @@ const Services = () => {
 
   const fetchServices = async () => {
     try {
+      setLoading(true)
+      setError(null)
       const response = await fetch('/api/services')
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
       const data = await response.json()
-      setServices(data)
+      setServices(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Error fetching services:', error)
+      setError(error.message)
+      setServices([])
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -81,7 +92,19 @@ const Services = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {services.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan="3" className="px-6 py-4 text-center text-gray-500">
+                    Loading services...
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan="3" className="px-6 py-4 text-center text-red-500">
+                    Error loading services: {error}
+                  </td>
+                </tr>
+              ) : services.length === 0 ? (
                 <>
                   <tr>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Pest Control</td>
@@ -109,7 +132,7 @@ const Services = () => {
                   </tr>
                 </>
               ) : (
-                services.map((service) => (
+                (services || []).map((service) => (
                   <tr key={service._id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{service.name}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{service.description}</td>
