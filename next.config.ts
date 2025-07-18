@@ -1,6 +1,8 @@
-
+// next.config.ts
 const nextConfig = {
-  allowedDevOrigins: [process.env.REPLIT_DOMAINS?.split(",")[0]],
+  experimental: {
+    allowedDevOrigins: ["http://localhost:3000"], // ✅ should be strings
+  },
 };
 
-module.exports = nextConfig;
+export default nextConfig;

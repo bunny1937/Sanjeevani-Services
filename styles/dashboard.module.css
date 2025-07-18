@@ -1,0 +1,179 @@
+/* Dashboard Styles */
+.pageHeader {
+  margin-bottom: 24px;
+}
+
+.pageHeader h1 {
+  font-size: 28px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 8px;
+}
+
+.pageHeader p {
+  color: #6b7280;
+  font-size: 16px;
+}
+
+/* Stats Grid */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.statCard {
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  padding: 24px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.statCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+}
+
+.statCardContent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.statInfo p:first-child {
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.statValue {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 8px 0;
+}
+
+.statValue.blue {
+  color: #3b82f6;
+}
+
+.statValue.green {
+  color: #10b981;
+}
+
+.statValue.orange {
+  color: #f97316;
+}
+
+.statValue.red {
+  color: #ef4444;
+}
+
+.statValue.purple {
+  color: #8b5cf6;
+}
+
+.statDescription {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+.statIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.statIcon.blue {
+  background-color: #dbeafe;
+}
+
+.statIcon.green {
+  background-color: #d1fae5;
+}
+
+.statIcon.orange {
+  background-color: #fed7aa;
+}
+
+.statIcon.red {
+  background-color: #fecaca;
+}
+
+.statIcon.purple {
+  background-color: #e9d5ff;
+}
+
+/* Service Stats Grid */
+.serviceStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+/* Financial Overview Grid */
+.financialGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .statsGrid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .serviceStatsGrid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .financialGrid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .statCard {
+    padding: 20px;
+  }
+
+  .statValue {
+    font-size: 24px;
+  }
+
+  .statIcon {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .pageHeader h1 {
+    font-size: 24px;
+  }
+
+  .pageHeader p {
+    font-size: 14px;
+  }
+
+  .statCard {
+    padding: 16px;
+  }
+
+  .statValue {
+    font-size: 20px;
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "expenses": [
+    {
+      "_id": "6866cc8dbcdae0d3d585b42f",
+      "date": "2025-01-15",
+      "type": "Transportation",
+      "amount": 500,
+      "description": "Fuel for service vehicle",
+      "__v": 0,
+      "createdAt": "2025-07-03T18:31:41.931Z",
+      "updatedAt": "2025-07-03T18:31:41.931Z"
+    },
+    {
+      "_id": "6866cc8dbcdae0d3d585b430",
+      "date": "2025-01-10",
+      "type": "Materials",
+      "amount": 800,
+      "description": "Cleaning chemicals and equipment",
+      "__v": 0,
+      "createdAt": "2025-07-03T18:31:41.932Z",
+      "updatedAt": "2025-07-03T18:31:41.932Z"
+    },
+    {
+      "_id": "6866cc8dbcdae0d3d585b431",
+      "date": "2024-01-05",
+      "type": "Labor",
+      "amount": 1200,
+      "description": "Daily wages for workers",
+      "__v": 0,
+      "createdAt": "2025-07-03T18:31:41.932Z",
+      "updatedAt": "2025-07-03T18:31:41.932Z"
+    },
+    {
+      "_id": "6869349178e8e2e90f782a54",
+      "date": "2025-07-05",
+      "type": "Labor",
+      "amount": 10000,
+      "description": "aaise hi",
+      "createdAt": "2025-07-05T14:20:01.374Z",
+      "updatedAt": "2025-07-05T14:20:01.374Z",
+      "__v": 0
+    },
+    {
+      "_id": "686937ce78e8e2e90f782a6b",
+      "date": "2025-07-02",
+      "type": "Transportation",
+      "amount": 4000,
+      "description": "lag gaya yrr",
+      "createdAt": "2025-07-05T14:33:50.861Z",
+      "updatedAt": "2025-07-05T14:33:50.861Z",
+      "__v": 0
+    },
+    {
+      "_id": "686937d078e8e2e90f782a6d",
+      "date": "2025-07-02",
+      "type": "Transportation",
+      "amount": 4000,
+      "description": "lag gaya yrr",
+      "createdAt": "2025-07-05T14:33:52.422Z",
+      "updatedAt": "2025-07-05T14:33:52.422Z",
+      "__v": 0
+    }
+  ]
+}

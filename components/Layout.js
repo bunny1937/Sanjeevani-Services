@@ -1,30 +1,50 @@
+"use client";
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/router'
-import styles from './Layout.module.css'
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import styles from "./Layout.module.css";
 
 const Layout = ({ children }) => {
-  const router = useRouter()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const router = useRouter();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const navigation = [
-    { name: 'Dashboard', href: '/', icon: '📊' },
-    { name: 'Properties & Clients', href: '/properties-client', icon: '🏠' },
-    { name: 'Services', href: '/services', icon: '🔧' },
-    { name: 'Daily Book', href: '/daily-book', icon: '📖' },
-    { name: 'Reminders', href: '/reminders', icon: '⏰' },
-    { name: 'Expenses', href: '/expenses', icon: '💰' },
-    { name: 'Labor', href: '/labor', icon: '👷' },
-    { name: 'Reports', href: '/reports', icon: '📋' },
-  ]
+    { name: "Dashboard", href: "/", icon: "📊", color: "blue" },
+    {
+      name: "Properties & Clients",
+      href: "/properties-client",
+      icon: "🏠",
+      color: "green",
+    },
+    { name: "Services", href: "/services", icon: "🔧", color: "purple" },
+    { name: "Daily Book", href: "/daily-book", icon: "📖", color: "orange" },
+    { name: "Reminders", href: "/reminders", icon: "⏰", color: "red" },
+    { name: "Expenses", href: "/expenses", icon: "💰", color: "yellow" },
+    { name: "Labor", href: "/labor", icon: "👷", color: "indigo" },
+    { name: "Reports", href: "/reports", icon: "📋", color: "pink" },
+  ];
 
   return (
     <div className={styles.layoutContainer}>
+      {/* Sidebar Overlay */}
+      {sidebarOpen && (
+        <div
+          className={styles.sidebarOverlay}
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <div className={`${styles.sidebar} ${sidebarOpen ? styles.open : ''}`}>
+      <div className={`${styles.sidebar} ${sidebarOpen ? styles.open : ""}`}>
         <div className={styles.sidebarHeader}>
-          <h1 className={styles.sidebarTitle}>Sanjeevani Services</h1>
+          <div className={styles.logo}>
+            <div className={styles.logoIcon}>🏥</div>
+            <div className={styles.logoText}>
+              <h1>Sanjeevani</h1>
+              <p>Services</p>
+            </div>
+          </div>
           <button
             onClick={() => setSidebarOpen(false)}
             className={styles.sidebarClose}
@@ -32,13 +52,45 @@ const Layout = ({ children }) => {
             ✕
           </button>
         </div>
+
         <nav className={styles.sidebarNav}>
-          <div>
-            {navigation.map((item) => (
+          <div className={styles.navSection}>
+            <p className={styles.navSectionTitle}>Main Menu</p>
+            {navigation.slice(0, 4).map((item) => (
               <Link key={item.name} href={item.href}>
-                <div className={`${styles.navItem} ${router.pathname === item.href ? styles.active : ''}`}>
-                  <span className={styles.navItemIcon}>{item.icon}</span>
-                  {item.name}
+                <div
+                  className={`${styles.navItem} ${
+                    router.pathname === item.href ? styles.active : ""
+                  } ${styles[item.color]}`}
+                >
+                  <div className={styles.navItemIcon}>
+                    <span>{item.icon}</span>
+                  </div>
+                  <span className={styles.navItemText}>{item.name}</span>
+                  {router.pathname === item.href && (
+                    <div className={styles.activeIndicator} />
+                  )}
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          <div className={styles.navSection}>
+            <p className={styles.navSectionTitle}>Management</p>
+            {navigation.slice(4).map((item) => (
+              <Link key={item.name} href={item.href}>
+                <div
+                  className={`${styles.navItem} ${
+                    router.pathname === item.href ? styles.active : ""
+                  } ${styles[item.color]}`}
+                >
+                  <div className={styles.navItemIcon}>
+                    <span>{item.icon}</span>
+                  </div>
+                  <span className={styles.navItemText}>{item.name}</span>
+                  {router.pathname === item.href && (
+                    <div className={styles.activeIndicator} />
+                  )}
                 </div>
               </Link>
             ))}
@@ -47,25 +99,50 @@ const Layout = ({ children }) => {
       </div>
 
       {/* Main content */}
-      <div className={`${styles.mainContent} ${!sidebarOpen ? styles.sidebarClosed : ''}`}>
+      <div
+        className={`${styles.mainContent} ${
+          sidebarOpen ? styles.sidebarOpen : ""
+        }`}
+      >
         {/* Top bar */}
         <div className={styles.topBar}>
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className={styles.menuButton}
-          >
-            ☰
-          </button>
-          <h2 className={styles.pageTitle}>Sanjeevani Services - Management Dashboard</h2>
+          <div className={styles.topBarLeft}>
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className={styles.menuButton}
+            >
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
+            <div className={styles.breadcrumb}>
+              <span>Sanjeevani Services</span>
+              <span className={styles.breadcrumbSeparator}>›</span>
+              <span>Management Dashboard</span>
+            </div>
+          </div>
+
+          <div className={styles.topBarRight}>
+            <button className={styles.notificationButton}>
+              <span>🔔</span>
+              <div className={styles.notificationBadge}>3</div>
+            </button>
+            <button className={styles.profileButton}>
+              <div className={styles.userProfile}>
+                <div className={styles.userAvatar}>👤</div>
+                <div className={styles.userInfo}>
+                  <p className={styles.userName}>Admin </p>
+                </div>
+              </div>
+            </button>
+          </div>
         </div>
 
         {/* Page content */}
-        <main className={styles.pageContent}>
-          {children}
-        </main>
+        <main className={styles.pageContent}>{children}</main>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Layout
+export default Layout;

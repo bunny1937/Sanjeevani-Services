@@ -1,150 +1,378 @@
-
-/* Layout Styles */
 .layoutContainer {
   display: flex;
-  height: 100vh;
-  overflow: hidden;
-  background-color: #f5f5f5;
+  outline: 1px solid red;
+  width: 100%;
+  min-height: 100vh;
+  background: #fafbfc;
 }
 
-/* Sidebar Styles */
-.sidebar {
-  width: 256px;
-  background-color: white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+.sidebarOverlay {
   position: fixed;
-  height: 100vh;
-  left: 0;
   top: 0;
-  transform: translateX(-100%);
-  transition: transform 0.3s ease;
-  z-index: 50;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 998;
+  display: none;
+}
+
+.sidebar {
+  width: 20%;
+  background: #ffffff;
+  border-right: 1px solid #e5e7eb;
+  position: fixed;
+  top: 0;
+  left: -260px;
+  height: 100vh;
+  transition: all 0.3s ease;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar.open {
-  transform: translateX(0);
+  left: 0;
 }
 
 .sidebarHeader {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  height: 64px;
-  background-color: #f97316;
-  padding: 0 16px;
+  align-items: center;
 }
 
-.sidebarTitle {
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.logoIcon {
+  width: 36px;
+  height: 36px;
+  background: #111827;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.125rem;
   color: white;
-  font-size: 18px;
-  font-weight: 600;
+}
+
+.logoText h1 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+  color: #111827;
+  font-family: "Inter", sans-serif;
+}
+
+.logoText p {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin: 0;
+  font-weight: 500;
 }
 
 .sidebarClose {
   background: none;
   border: none;
-  color: white;
-  font-size: 20px;
+  color: #6b7280;
+  font-size: 1.25rem;
   cursor: pointer;
-  display: none;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.sidebarClose:hover {
+  background: #f3f4f6;
+  color: #111827;
 }
 
 .sidebarNav {
-  margin-top: 20px;
-  padding: 0 8px;
+  flex: 1;
+  padding: 1rem 0;
+  overflow-y: auto;
+}
+
+.navSection {
+  margin-bottom: 1.5rem;
+}
+
+.navSectionTitle {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #9ca3af;
+  margin: 0 1rem 0.75rem;
+  font-family: "Inter", sans-serif;
 }
 
 .navItem {
   display: flex;
   align-items: center;
-  padding: 8px 16px;
-  margin-bottom: 4px;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin: 0.125rem 0.75rem;
   border-radius: 6px;
-  color: #6b7280;
-  font-size: 14px;
-  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
+  position: relative;
+  text-decoration: none;
+  color: #6b7280;
+  font-size: 1.2rem;
+  font-weight: 700;
 }
 
 .navItem:hover {
-  background-color: #f9fafb;
+  background: #f3f4f6;
   color: #111827;
 }
 
 .navItem.active {
-  background-color: #fed7aa;
-  color: #c2410c;
+  background: rgb(255 237 213);
+  color: rgb(234 88 12);
 }
 
 .navItemIcon {
-  margin-right: 12px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
 }
 
-/* Main Content */
+.navItemText {
+  font-family: "Inter", sans-serif;
+}
+
+.activeIndicator {
+  position: absolute;
+  right: 0.75rem;
+  width: 4px;
+  height: 4px;
+  background: white;
+  border-radius: 50%;
+}
+
+.sidebarFooter {
+  padding: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.userProfile {
+  display: flex;
+  align-items: center;
+  margin-right: 3.8rem;
+  gap: 0.8rem;
+  padding: 0.1rem;
+  background: #f9fafb;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+
+.userAvatar {
+  width: 32px;
+  height: 32px;
+  background: #e8e8ea;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  color: white;
+}
+
+.userInfo {
+  flex: 1;
+}
+
+.userName {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin: 0;
+  color: #111827;
+  font-family: "Inter", sans-serif;
+}
+
+.userRole {
+  font-size: 0.6875rem;
+  color: #6b7280;
+  margin: 0;
+}
+
 .mainContent {
   flex: 1;
+  margin-left: 0;
+  transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  margin-left: 256px;
-  transition: margin-left 0.3s ease;
-}
-
-.mainContent.sidebarClosed {
-  margin-left: 0;
 }
 
 .topBar {
-  background-color: white;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  padding: 8px 16px;
+  height: 64px;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 64px;
+  padding: 0 1.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.topBarLeft {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .menuButton {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
   background: none;
   border: none;
-  color: #6b7280;
-  font-size: 20px;
   cursor: pointer;
-  display: none;
+  padding: 0.5rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
 }
 
-.pageTitle {
-  font-size: 20px;
+.menuButton:hover {
+  background: #f3f4f6;
+}
+
+.menuButton span {
+  width: 16px;
+  height: 2px;
+  background: #6b7280;
+  border-radius: 1px;
+  transition: all 0.2s ease;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: #6b7280;
+  font-family: "Inter", sans-serif;
+}
+
+.breadcrumbSeparator {
+  color: #d1d5db;
+}
+
+.topBarRight {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.notificationButton {
+  right: 100px;
+}
+.profileButton {
+  right: 0px;
+}
+.notificationButton,
+.profileButton {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1rem;
+}
+
+.notificationButton:hover,
+.profileButton:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.notificationBadge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 16px;
+  height: 16px;
+  background: #dc2626;
+  color: white;
+  border-radius: 50%;
+  font-size: 0.6875rem;
   font-weight: 600;
-  color: #111827;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
 }
 
 .pageContent {
   flex: 1;
   overflow-y: auto;
-  padding: 16px 24px;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
+/* Desktop styles */
+@media (min-width: 1024px) {
   .sidebar {
-    transform: translateX(-100%);
+    position: relative;
+    left: 0;
   }
-  
-  .sidebar.open {
-    transform: translateX(0);
+
+  .sidebarOverlay {
+    display: none !important;
   }
-  
-  .mainContent {
+
+  .menuButton {
+    display: none;
+  }
+}
+
+/* Mobile styles */
+@media (max-width: 1023px) {
+  .sidebarOverlay {
+    display: block;
+  }
+
+  .mainContent.sidebarOpen {
     margin-left: 0;
   }
-  
-  .menuButton {
-    display: block;
+
+  .topBar {
+    padding: 0 1rem;
   }
-  
-  .sidebarClose {
-    display: block;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: 100%;
+    left: -100%;
+  }
+
+  .sidebar.open {
+    left: 0;
+  }
+
+  .breadcrumb {
+    display: none;
+  }
+
+  .topBarRight {
+    gap: 0.5rem;
   }
 }

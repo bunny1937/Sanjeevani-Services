@@ -1,212 +1,357 @@
+// seed.js - MongoDB Attendance Data Seeder
+import mongoose from "mongoose";
 
-const mongoose = require('mongoose')
-
-// MongoDB connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/sanjeevani-services'
-
-// Models
-const PropertySchema = new mongoose.Schema({
-  name: String,
-  keyPerson: String,
-  contact: String,
-  location: String,
-  serviceType: String,
-  amount: Number,
-  lastService: String,
-}, { timestamps: true })
-
-const ServiceSchema = new mongoose.Schema({
-  name: String,
-  description: String,
-  defaultPrice: Number,
-  active: Boolean,
-}, { timestamps: true })
-
-const DailyBookSchema = new mongoose.Schema({
-  date: String,
-  property: String,
-  keyPerson: String,
-  contact: String,
-  location: String,
-  service: String,
-  amount: Number,
-  remarks: String,
-}, { timestamps: true })
-
-const ExpenseSchema = new mongoose.Schema({
-  date: String,
-  type: String,
-  amount: Number,
-  description: String,
-}, { timestamps: true })
-
-const LaborerSchema = new mongoose.Schema({
-  name: String,
-  phone: String,
-  joiningDate: String,
-  daysWorked: Number,
-  monthlyPay: Number,
-  lastAttendance: String,
-  status: String,
-}, { timestamps: true })
-
-const Property = mongoose.models.Property || mongoose.model('Property', PropertySchema)
-const Service = mongoose.models.Service || mongoose.model('Service', ServiceSchema)
-const DailyBook = mongoose.models.DailyBook || mongoose.model('DailyBook', DailyBookSchema)
-const Expense = mongoose.models.Expense || mongoose.model('Expense', ExpenseSchema)
-const Laborer = mongoose.models.Laborer || mongoose.model('Laborer', LaborerSchema)
-
-// Dummy data
-const dummyProperties = [
-  {
-    name: 'Sunrise Apartments',
-    keyPerson: 'Rajesh Kumar',
-    contact: '9876543210',
-    location: 'Sector 15, Gurgaon',
-    serviceType: 'Water Tank Cleaning',
-    amount: 2500,
-    lastService: '2024-01-15'
-  },
-  {
-    name: 'Green Valley Society',
-    keyPerson: 'Priya Sharma',
-    contact: '9876543211',
-    location: 'Sector 22, Gurgaon',
-    serviceType: 'Pest Control',
-    amount: 1800,
-    lastService: '2024-01-10'
-  },
-  {
-    name: 'Royal Heights',
-    keyPerson: 'Amit Singh',
-    contact: '9876543212',
-    location: 'Sector 8, Gurgaon',
-    serviceType: 'Motor Repairing',
-    amount: 3200,
-    lastService: '2024-01-05'
+// MongoDB Connection
+const connectDB = async () => {
+  try {
+    await mongoose.connect(
+      process.env.MONGODB_URI || "mongodb://localhost:27017/your-database",
+      {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+      }
+    );
+    console.log("Connected to MongoDB");
+  } catch (error) {
+    console.error("MongoDB connection error:", error);
+    process.exit(1);
   }
-]
+};
 
-const dummyServices = [
+// Schemas
+const AttendanceSchema = new mongoose.Schema(
   {
-    name: 'Pest Control',
-    description: 'Default service for Pest Control',
-    defaultPrice: 1500,
-    active: true
+    laborerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Laborer",
+      required: true,
+    },
+    date: {
+      type: String,
+      required: true,
+    },
+    status: {
+      type: String,
+      enum: ["present", "absent"],
+      required: true,
+    },
   },
-  {
-    name: 'Water Tank Cleaning',
-    description: 'Default service for Water Tank Cleaning',
-    defaultPrice: 2000,
-    active: true
-  },
-  {
-    name: 'Motor Repairing & Rewinding',
-    description: 'Default service for Motor Repairing',
-    defaultPrice: 3000,
-    active: true
-  }
-]
+  { timestamps: true }
+);
 
-const dummyDailyBook = [
+const LaborerSchema = new mongoose.Schema(
   {
-    date: '2024-01-15',
-    property: 'Sunrise Apartments',
-    keyPerson: 'Rajesh Kumar',
-    contact: '9876543210',
-    location: 'Sector 15, Gurgaon',
-    service: 'Water Tank Cleaning',
-    amount: 2500,
-    remarks: 'Regular maintenance'
+    name: String,
+    phone: String,
+    joiningDate: String,
+    daysWorked: Number,
+    monthlyPay: Number,
+    lastAttendance: String,
+    status: String,
   },
-  {
-    date: '2024-01-10',
-    property: 'Green Valley Society',
-    keyPerson: 'Priya Sharma',
-    contact: '9876543211',
-    location: 'Sector 22, Gurgaon',
-    service: 'Pest Control',
-    amount: 1800,
-    remarks: 'Quarterly service'
-  }
-]
+  { timestamps: true }
+);
 
-const dummyExpenses = [
-  {
-    date: '2024-01-15',
-    type: 'Transportation',
-    amount: 500,
-    description: 'Fuel for service vehicle'
-  },
-  {
-    date: '2024-01-10',
-    type: 'Materials',
-    amount: 800,
-    description: 'Cleaning chemicals and equipment'
-  },
-  {
-    date: '2024-01-05',
-    type: 'Labor',
-    amount: 1200,
-    description: 'Daily wages for workers'
-  }
-]
+const Attendance =
+  mongoose.models.Attendance ||
+  mongoose.model("Attendance", AttendanceSchema, "attendance");
+const Laborer =
+  mongoose.models.Laborer ||
+  mongoose.model("Laborer", LaborerSchema, "laborers");
 
-const dummyLaborers = [
+// Your existing laborers data
+const laborers = [
   {
-    name: 'Ravi Kumar',
-    phone: '9876543220',
-    joiningDate: '2023-06-01',
+    _id: new mongoose.Types.ObjectId("6866cc8dbcdae0d3d585b433"),
+    name: "Abhishek Dhanpawde",
+    phone: "9876543220",
+    joiningDate: "2023-06-01",
     daysWorked: 22,
     monthlyPay: 15000,
-    lastAttendance: '2024-01-15',
-    status: 'Active'
+    lastAttendance: "2025-01-15",
+    status: "Active",
   },
   {
-    name: 'Suresh Yadav',
-    phone: '9876543221',
-    joiningDate: '2023-08-15',
+    _id: new mongoose.Types.ObjectId("6866cc8dbcdae0d3d585b434"),
+    name: "Suresh Yadav",
+    phone: "9876543221",
+    joiningDate: "2023-08-15",
     daysWorked: 20,
     monthlyPay: 14000,
-    lastAttendance: '2024-01-14',
-    status: 'Active'
+    lastAttendance: "2024-01-14",
+    status: "Active",
   },
   {
-    name: 'Mahesh Singh',
-    phone: '9876543222',
-    joiningDate: '2023-10-01',
+    _id: new mongoose.Types.ObjectId("6866cc8dbcdae0d3d585b435"),
+    name: "Mahesh Singh",
+    phone: "9876543222",
+    joiningDate: "2023-10-01",
     daysWorked: 18,
     monthlyPay: 13000,
-    lastAttendance: '2024-01-12',
-    status: 'Active'
-  }
-]
+    lastAttendance: "2024-01-12",
+    status: "Active",
+  },
+];
 
-async function seedDatabase() {
+// Utility function to generate date range
+const generateDateRange = (startDate, endDate) => {
+  const dates = [];
+  const current = new Date(startDate);
+  const end = new Date(endDate);
+
+  while (current <= end) {
+    dates.push(current.toISOString().split("T")[0]);
+    current.setDate(current.getDate() + 1);
+  }
+
+  return dates;
+};
+
+// Generate realistic attendance patterns
+const generateAttendanceForLaborer = (
+  laborerId,
+  startDate,
+  endDate,
+  attendanceRate = 0.85
+) => {
+  const dates = generateDateRange(startDate, endDate);
+  const attendanceRecords = [];
+
+  dates.forEach((date) => {
+    const dayOfWeek = new Date(date).getDay();
+
+    // Skip Sundays (0) for most workers
+    if (dayOfWeek === 0) {
+      return;
+    }
+
+    // Higher chance of absence on Mondays and Saturdays
+    let dailyAttendanceRate = attendanceRate;
+    if (dayOfWeek === 1) dailyAttendanceRate *= 0.9; // Monday
+    if (dayOfWeek === 6) dailyAttendanceRate *= 0.8; // Saturday
+
+    // Random absence patterns
+    const isPresent = Math.random() < dailyAttendanceRate;
+
+    attendanceRecords.push({
+      laborerId: laborerId,
+      date: date,
+      status: isPresent ? "present" : "absent",
+    });
+  });
+
+  return attendanceRecords;
+};
+
+// Generate attendance for different periods
+const generateAttendanceData = () => {
+  const allAttendanceRecords = [];
+
+  // Generate attendance for the last 6 months
+  const currentDate = new Date();
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(currentDate.getMonth() - 6);
+
+  laborers.forEach((laborer) => {
+    // Different attendance rates for different workers
+    let attendanceRate = 0.85;
+
+    if (laborer.name === "Abhishek Dhanpawde") attendanceRate = 0.92; // Most regular
+    if (laborer.name === "Suresh Yadav") attendanceRate = 0.88;
+    if (laborer.name === "Mahesh Singh") attendanceRate = 0.8; // Least regular
+
+    const laborerAttendance = generateAttendanceForLaborer(
+      laborer._id,
+      sixMonthsAgo.toISOString().split("T")[0],
+      currentDate.toISOString().split("T")[0],
+      attendanceRate
+    );
+
+    allAttendanceRecords.push(...laborerAttendance);
+  });
+
+  return allAttendanceRecords;
+};
+
+// Update laborer statistics based on attendance
+const updateLaborerStats = async () => {
+  console.log("Updating laborer statistics...");
+
+  for (const laborer of laborers) {
+    const attendanceRecords = await Attendance.find({
+      laborerId: laborer._id,
+      status: "present",
+    });
+
+    const totalDaysWorked = attendanceRecords.length;
+
+    // Find the most recent attendance
+    const allAttendance = await Attendance.find({
+      laborerId: laborer._id,
+    }).sort({ date: -1 });
+
+    const lastAttendanceRecord = allAttendance[0];
+
+    // Update laborer record
+    await Laborer.findByIdAndUpdate(laborer._id, {
+      daysWorked: totalDaysWorked,
+      lastAttendance: lastAttendanceRecord
+        ? lastAttendanceRecord.date
+        : laborer.lastAttendance,
+    });
+
+    console.log(`Updated ${laborer.name}: ${totalDaysWorked} days worked`);
+  }
+};
+
+// Main seeding function
+const seedDatabase = async () => {
   try {
-    await mongoose.connect(MONGODB_URI)
-    console.log('Connected to MongoDB')
+    await connectDB();
+
+    console.log("Starting database seeding...");
 
     // Clear existing data
-    await Property.deleteMany({})
-    await Service.deleteMany({})
-    await DailyBook.deleteMany({})
-    await Expense.deleteMany({})
-    await Laborer.deleteMany({})
+    console.log("Clearing existing attendance data...");
+    await Attendance.deleteMany({});
 
-    // Insert dummy data
-    await Property.insertMany(dummyProperties)
-    await Service.insertMany(dummyServices)
-    await DailyBook.insertMany(dummyDailyBook)
-    await Expense.insertMany(dummyExpenses)
-    await Laborer.insertMany(dummyLaborers)
+    // Ensure laborers exist
+    console.log("Ensuring laborers exist...");
+    for (const laborer of laborers) {
+      await Laborer.findOneAndUpdate({ _id: laborer._id }, laborer, {
+        upsert: true,
+        new: true,
+      });
+    }
 
-    console.log('Database seeded successfully!')
-    process.exit(0)
+    // Generate and insert attendance data
+    console.log("Generating attendance data...");
+    const attendanceData = generateAttendanceData();
+
+    console.log(`Generated ${attendanceData.length} attendance records`);
+
+    // Insert attendance records in batches
+    const batchSize = 100;
+    for (let i = 0; i < attendanceData.length; i += batchSize) {
+      const batch = attendanceData.slice(i, i + batchSize);
+      await Attendance.insertMany(batch);
+      console.log(
+        `Inserted batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(
+          attendanceData.length / batchSize
+        )}`
+      );
+    }
+
+    // Update laborer statistics
+    await updateLaborerStats();
+
+    console.log("Database seeding completed successfully!");
+
+    // Display summary
+    const totalRecords = await Attendance.countDocuments();
+    const presentRecords = await Attendance.countDocuments({
+      status: "present",
+    });
+    const absentRecords = await Attendance.countDocuments({ status: "absent" });
+
+    console.log("\n=== SEEDING SUMMARY ===");
+    console.log(`Total attendance records: ${totalRecords}`);
+    console.log(`Present records: ${presentRecords}`);
+    console.log(`Absent records: ${absentRecords}`);
+    console.log(
+      `Overall attendance rate: ${(
+        (presentRecords / totalRecords) *
+        100
+      ).toFixed(2)}%`
+    );
+
+    // Display per laborer summary
+    console.log("\n=== PER LABORER SUMMARY ===");
+    for (const laborer of laborers) {
+      const laborerTotal = await Attendance.countDocuments({
+        laborerId: laborer._id,
+      });
+      const laborerPresent = await Attendance.countDocuments({
+        laborerId: laborer._id,
+        status: "present",
+      });
+      const rate =
+        laborerTotal > 0
+          ? ((laborerPresent / laborerTotal) * 100).toFixed(2)
+          : 0;
+
+      console.log(
+        `${laborer.name}: ${laborerPresent}/${laborerTotal} (${rate}%)`
+      );
+    }
   } catch (error) {
-    console.error('Error seeding database:', error)
-    process.exit(1)
+    console.error("Seeding error:", error);
+  } finally {
+    await mongoose.connection.close();
+    console.log("Database connection closed");
   }
+};
+
+// Add some specific test data for current month
+const addCurrentMonthData = async () => {
+  console.log("Adding current month test data...");
+
+  const currentDate = new Date();
+  const currentMonth = currentDate.getMonth();
+  const currentYear = currentDate.getFullYear();
+
+  // Get first day of current month
+  const firstDay = new Date(currentYear, currentMonth, 1);
+  const today = new Date();
+
+  const currentMonthDates = generateDateRange(
+    firstDay.toISOString().split("T")[0],
+    today.toISOString().split("T")[0]
+  );
+
+  // Add more recent attendance for testing
+  const recentAttendance = [];
+
+  laborers.forEach((laborer) => {
+    currentMonthDates.forEach((date) => {
+      const dayOfWeek = new Date(date).getDay();
+      if (dayOfWeek === 0) return; // Skip Sundays
+
+      // Higher attendance rate for current month
+      const isPresent = Math.random() < 0.9;
+
+      recentAttendance.push({
+        laborerId: laborer._id,
+        date: date,
+        status: isPresent ? "present" : "absent",
+      });
+    });
+  });
+
+  // Insert current month data (will update existing records)
+  for (const record of recentAttendance) {
+    await Attendance.findOneAndUpdate(
+      { laborerId: record.laborerId, date: record.date },
+      record,
+      { upsert: true, new: true }
+    );
+  }
+
+  console.log(`Added ${recentAttendance.length} current month records`);
+};
+
+// Run the seeder
+const runSeeder = async () => {
+  await seedDatabase();
+  await connectDB();
+  await addCurrentMonthData();
+  await updateLaborerStats();
+  await mongoose.connection.close();
+};
+
+// Check if running directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  runSeeder();
 }
 
-seedDatabase()
+export default runSeeder;

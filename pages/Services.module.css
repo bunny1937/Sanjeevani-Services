@@ -1,7 +1,6 @@
-
 /* Services Page Styles */
 .pageHeader {
-  margin-bottom: 24px;
+  margin: 2rem;
 }
 
 .pageHeaderContent {
@@ -11,9 +10,9 @@
 }
 
 .pageHeader h1 {
-  font-size: 24px;
+  font-size: 2rem;
   font-weight: 700;
-  color: #111827;
+  color: rgb(234 88 12);
   margin-bottom: 4px;
 }
 
@@ -62,6 +61,7 @@
 /* Table Styles */
 .tableContainer {
   background-color: white;
+  margin: 0 2rem;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   overflow: hidden;
@@ -115,16 +115,16 @@
     align-items: flex-start;
     gap: 16px;
   }
-  
+
   .pageActions {
     flex-direction: column;
     width: 100%;
   }
-  
+
   .tableContainer {
     overflow-x: auto;
   }
-  
+
   .table {
     min-width: 600px;
   }
