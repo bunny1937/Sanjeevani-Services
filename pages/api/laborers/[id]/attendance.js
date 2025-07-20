@@ -2,7 +2,19 @@
 import connectDB from "../../../../lib/mongodb.js";
 import mongoose from "mongoose";
 
-// Attendance Schema
+// Force clear all existing models to avoid schema conflicts
+Object.keys(mongoose.models).forEach((modelName) => {
+  if (modelName === "Attendance") {
+    delete mongoose.models[modelName];
+  }
+});
+
+// Also clear from connection models if it exists
+if (mongoose.connection.models.Attendance) {
+  delete mongoose.connection.models.Attendance;
+}
+
+// Attendance Schema - Updated to include holiday
 const AttendanceSchema = new mongoose.Schema(
   {
     laborerId: {
@@ -16,8 +28,12 @@ const AttendanceSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["present", "absent"],
+      enum: ["present", "absent", "holiday"], // Updated enum with holiday
       required: true,
+    },
+    reason: {
+      type: String,
+      required: false, // Optional field for reasons (like holiday description)
     },
   },
   { timestamps: true }
@@ -37,9 +53,8 @@ const LaborerSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-const Attendance =
-  mongoose.models.Attendance ||
-  mongoose.model("Attendance", AttendanceSchema, "attendance");
+// Force recreate the model with updated schema
+const Attendance = mongoose.model("Attendance", AttendanceSchema, "attendance");
 
 const Laborer =
   mongoose.models.Laborer ||
@@ -106,12 +121,14 @@ export default async function handler(req, res) {
       }
 
       const attendanceRecords = await Attendance.find(query).lean();
-      console.log("Found attendance records:", attendanceRecords.length);
 
       // Transform to the format expected by frontend
       const attendanceData = {};
       attendanceRecords.forEach((record) => {
-        attendanceData[record.date] = record.status;
+        attendanceData[record.date] = {
+          status: record.status,
+          reason: record.reason || null,
+        };
       });
 
       return res.status(200).json({
@@ -126,7 +143,9 @@ export default async function handler(req, res) {
     }
 
     if (req.method === "POST") {
-      const { date, status } = req.body;
+      const { date, status, reason } = req.body;
+
+      console.log("Received POST data:", { date, status, reason });
 
       // Validate input
       if (!date || !status) {
@@ -136,10 +155,11 @@ export default async function handler(req, res) {
         });
       }
 
-      if (!["present", "absent"].includes(status)) {
+      // Updated validation to include holiday
+      if (!["present", "absent", "holiday"].includes(status)) {
         return res.status(400).json({
           success: false,
-          message: "Status must be 'present' or 'absent'",
+          message: "Status must be 'present', 'absent', or 'holiday'",
         });
       }
 
@@ -174,30 +194,43 @@ export default async function handler(req, res) {
         // Update existing attendance
         previousStatus = existingAttendance.status;
         existingAttendance.status = status;
+        if (reason) {
+          existingAttendance.reason = reason;
+        }
         await existingAttendance.save();
+        console.log("Updated existing attendance:", existingAttendance);
       } else {
         // Create new attendance record
-        await Attendance.create({
+        const attendanceData = {
           laborerId: new mongoose.Types.ObjectId(id),
           date: date,
           status: status,
-        });
+        };
+        if (reason) {
+          attendanceData.reason = reason;
+        }
+        const newAttendance = await Attendance.create(attendanceData);
+        console.log("Created new attendance:", newAttendance);
       }
 
       // Update laborer's days worked based on status change
       if (previousStatus !== status) {
         if (status === "present") {
-          if (previousStatus === "absent") {
-            // Changed from absent to present
+          if (previousStatus === "absent" || previousStatus === "holiday") {
+            // Changed from absent/holiday to present
             laborer.daysWorked = (laborer.daysWorked || 0) + 1;
           } else if (previousStatus === null) {
             // New attendance marked as present
             laborer.daysWorked = (laborer.daysWorked || 0) + 1;
           }
-        } else if (status === "absent" && previousStatus === "present") {
-          // Changed from present to absent
+        } else if (
+          (status === "absent" || status === "holiday") &&
+          previousStatus === "present"
+        ) {
+          // Changed from present to absent/holiday
           laborer.daysWorked = Math.max(0, (laborer.daysWorked || 0) - 1);
         }
+        // Note: Holiday to absent or absent to holiday doesn't change daysWorked
       }
 
       // Update laborer's last attendance
@@ -210,6 +243,7 @@ export default async function handler(req, res) {
         data: {
           date,
           status,
+          reason: reason || null,
           previousStatus,
           laborerId: id,
         },

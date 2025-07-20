@@ -675,7 +675,8 @@ const DailyBook = () => {
                       {entry.remarks || "-"}
                     </td>
                     <td className={styles.serviceDetailsCell}>
-                      {entry.serviceDetails && (
+                      {entry.serviceDetails &&
+                      Object.keys(entry.serviceDetails).length > 0 ? (
                         <div className={styles.serviceDetails}>
                           {Object.entries(entry.serviceDetails).map(
                             ([key, value]) => (
@@ -685,6 +686,8 @@ const DailyBook = () => {
                             )
                           )}
                         </div>
+                      ) : (
+                        "-"
                       )}
                     </td>
                   </tr>

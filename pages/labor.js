@@ -16,12 +16,32 @@ const Labor = () => {
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0]
   );
+
   const [stats, setStats] = useState({
     totalLaborers: 0,
     activeLaborers: 0,
     monthlyPayroll: 0,
     totalDaysWorked: 0,
   });
+
+  // New state for attendance selection
+  const [selectedAttendanceType, setSelectedAttendanceType] =
+    useState("present");
+  const [selectedReason, setSelectedReason] = useState("");
+  const [customReason, setCustomReason] = useState("");
+  const [showReasonInput, setShowReasonInput] = useState(false);
+
+  // Reason options
+  const absentReasons = [
+    "Sick leave",
+    "Family emergency",
+    "Uninformed absence",
+  ];
+  const holidayReasons = [
+    "Festival leave",
+    "Company holiday",
+    "Weather issues",
+  ];
 
   const [newLaborer, setNewLaborer] = useState({
     name: "",
@@ -134,12 +154,31 @@ const Labor = () => {
 
   const handleMarkAttendance = (laborer) => {
     setSelectedLaborer(laborer);
+    setSelectedAttendanceType("present");
+    setSelectedReason("");
+    setCustomReason("");
+    setShowReasonInput(false);
     setShowAttendanceModal(true);
   };
-
   const markAttendance = async (status) => {
     try {
       const today = new Date().toISOString().split("T")[0];
+
+      const requestBody = {
+        date: today,
+        status: selectedAttendanceType,
+      };
+
+      // Add reason if it's absent or holiday
+      if (selectedAttendanceType !== "present") {
+        const reason =
+          selectedReason === "custom" ? customReason : selectedReason;
+        if (!reason) {
+          alert("Please select or enter a reason");
+          return;
+        }
+        requestBody.reason = reason;
+      }
 
       const response = await fetch(
         `/api/laborers/${selectedLaborer._id}/attendance`,
@@ -148,15 +187,16 @@ const Labor = () => {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            date: today,
-            status: status,
-          }),
+          body: JSON.stringify(requestBody),
         }
       );
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error("API Error Response:", errorText);
+        throw new Error(
+          `HTTP error! status: ${response.status}, message: ${errorText}`
+        );
       }
 
       const result = await response.json();
@@ -186,7 +226,13 @@ const Labor = () => {
 
         setLaborers(updatedLaborers);
         setShowAttendanceModal(false);
-        alert(`Attendance marked as ${status} for ${selectedLaborer.name}`);
+        setSelectedAttendanceType("present");
+        setSelectedReason("");
+        setCustomReason("");
+        setShowReasonInput(false);
+        alert(
+          `Attendance marked as ${selectedAttendanceType} for ${selectedLaborer.name}`
+        );
       } else {
         alert(`Error: ${result.message}`);
       }
@@ -204,10 +250,6 @@ const Labor = () => {
       const month = currentMonth.getMonth() + 1;
       const year = currentMonth.getFullYear();
 
-      console.log(
-        `Fetching attendance for laborer ${laborer._id}, month: ${month}, year: ${year}`
-      );
-
       const response = await fetch(
         `/api/laborers/${laborer._id}/attendance?month=${month}&year=${year}`
       );
@@ -219,9 +261,10 @@ const Labor = () => {
       const result = await response.json();
 
       if (result.success) {
+        // CRITICAL FIX: Replace the specific laborer's data instead of merging
         setAttendanceData((prev) => ({
           ...prev,
-          [laborer._id]: result.data,
+          [laborer._id]: result.data, // This replaces only this laborer's data
         }));
       } else {
         console.error("API Error:", result.message);
@@ -256,6 +299,8 @@ const Labor = () => {
       const dateStr = `${currentMonth.getFullYear()}-${String(
         currentMonth.getMonth() + 1
       ).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+      // CRITICAL FIX: Make sure we're getting attendance for the correct laborer
       const attendance = attendanceData[selectedLaborer?._id]?.[dateStr];
 
       days.push(
@@ -267,10 +312,18 @@ const Labor = () => {
           {attendance && (
             <div
               className={`${styles.attendanceDot} ${
-                attendance === "present" ? styles.presentDot : styles.absentDot
+                attendance.status === "present"
+                  ? styles.presentDot
+                  : attendance.status === "holiday"
+                  ? styles.holidayDot
+                  : styles.absentDot
               }`}
             >
-              {attendance === "present" ? "✓" : "✗"}
+              {attendance.status === "present"
+                ? "✓"
+                : attendance.status === "holiday"
+                ? "🏖️"
+                : "✗"}
             </div>
           )}
         </div>
@@ -641,18 +694,113 @@ const Labor = () => {
               <p>
                 Mark attendance for today ({new Date().toLocaleDateString()})
               </p>
+
+              {/* Attendance Type Selection */}
+              <div className={styles.attendanceTypeSelection}>
+                <div className={styles.radioGroup}>
+                  <label className={styles.radioOption}>
+                    <input
+                      type="radio"
+                      name="attendanceType"
+                      value="present"
+                      checked={selectedAttendanceType === "present"}
+                      onChange={(e) => {
+                        setSelectedAttendanceType(e.target.value);
+                        setShowReasonInput(false);
+                        setSelectedReason("");
+                        setCustomReason("");
+                      }}
+                    />
+                    <span>✅ Present</span>
+                  </label>
+
+                  <label className={styles.radioOption}>
+                    <input
+                      type="radio"
+                      name="attendanceType"
+                      value="absent"
+                      checked={selectedAttendanceType === "absent"}
+                      onChange={(e) => {
+                        setSelectedAttendanceType(e.target.value);
+                        setShowReasonInput(false);
+                        setSelectedReason("");
+                        setCustomReason("");
+                      }}
+                    />
+                    <span>❌ Absent</span>
+                  </label>
+
+                  <label className={styles.radioOption}>
+                    <input
+                      type="radio"
+                      name="attendanceType"
+                      value="holiday"
+                      checked={selectedAttendanceType === "holiday"}
+                      onChange={(e) => {
+                        setSelectedAttendanceType(e.target.value);
+                        setShowReasonInput(false);
+                        setSelectedReason("");
+                        setCustomReason("");
+                      }}
+                    />
+                    <span>🏖️ Holiday</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Reason Selection for Absent/Holiday */}
+              {selectedAttendanceType !== "present" && (
+                <div className={styles.reasonSelection}>
+                  <label htmlFor="reasonSelect">Select Reason:</label>
+                  <select
+                    id="reasonSelect"
+                    value={selectedReason}
+                    onChange={(e) => {
+                      setSelectedReason(e.target.value);
+                      setShowReasonInput(e.target.value === "custom");
+                      if (e.target.value !== "custom") {
+                        setCustomReason("");
+                      }
+                    }}
+                    className={styles.reasonSelect}
+                  >
+                    <option value="">Select a reason</option>
+                    {(selectedAttendanceType === "absent"
+                      ? absentReasons
+                      : holidayReasons
+                    ).map((reason) => (
+                      <option key={reason} value={reason}>
+                        {reason}
+                      </option>
+                    ))}
+                    <option value="custom">Custom reason</option>
+                  </select>
+
+                  {showReasonInput && (
+                    <div className={styles.customReasonInput}>
+                      <label htmlFor="customReason">Custom Reason:</label>
+                      <input
+                        id="customReason"
+                        type="text"
+                        value={customReason}
+                        onChange={(e) => setCustomReason(e.target.value)}
+                        placeholder="Enter custom reason"
+                        className={styles.customInput}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className={styles.attendanceButtons}>
                 <button
-                  className={styles.presentBtn}
-                  onClick={() => markAttendance("present")}
+                  className={styles.cancelBtn}
+                  onClick={() => setShowAttendanceModal(false)}
                 >
-                  ✅ Present
+                  Cancel
                 </button>
-                <button
-                  className={styles.absentBtn}
-                  onClick={() => markAttendance("absent")}
-                >
-                  ❌ Absent
+                <button className={styles.submitBtn} onClick={markAttendance}>
+                  Mark Attendance
                 </button>
               </div>
             </div>
@@ -720,6 +868,14 @@ const Labor = () => {
                     ✗
                   </div>
                   <span>Absent</span>
+                </div>
+                <div className={styles.legendItem}>
+                  <div
+                    className={`${styles.attendanceDot} ${styles.holidayDot}`}
+                  >
+                    🏖️
+                  </div>
+                  <span>Holiday</span>
                 </div>
               </div>
             </div>
