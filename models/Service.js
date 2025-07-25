@@ -1,25 +1,31 @@
+import mongoose from "mongoose";
 
-import mongoose from 'mongoose'
+const ServiceSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+    },
+    description: {
+      type: String,
+      required: true,
+    },
+    defaultPrice: {
+      type: Number,
+      default: 0,
+    },
+    active: {
+      type: Boolean,
+      default: true,
+    },
+    scopeOfWork: { String }, // New field for detailed service description
+    frequency: { String }, // New field for service frequency
+    notes: { String },
+  },
+  {
+    timestamps: true,
+  }
+);
 
-const ServiceSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-  },
-  description: {
-    type: String,
-    required: true,
-  },
-  defaultPrice: {
-    type: Number,
-    default: 0,
-  },
-  active: {
-    type: Boolean,
-    default: true,
-  },
-}, {
-  timestamps: true,
-})
-
-export default mongoose.models.Service || mongoose.model('Service', ServiceSchema)
+export default mongoose.models.Service ||
+  mongoose.model("Service", ServiceSchema);

@@ -19,13 +19,13 @@ async function exportAllCollections() {
     const db = client.db("test");
 
     const collections = [
-      "attendance",
-      // "dailybooks",
-      // "expenses",
+      // "attendance",
+      "dailybooks",
+      "expenses",
       "laborers",
-      // "properties",
-      // "services",
-      // "reminders",
+      "properties",
+      "services",
+      "reminders",
     ];
 
     const allData = {};

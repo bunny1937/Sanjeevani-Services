@@ -303,7 +303,9 @@
   font-size: 0.75rem;
   cursor: help;
 }
-
+.onHoldBadge {
+  color: red;
+}
 .serviceTag {
   display: inline-flex;
   align-items: center;

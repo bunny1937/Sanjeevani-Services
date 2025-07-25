@@ -1,4 +1,4 @@
-// pages/api/reminders.js - FIXED with only scheduledDate logic
+// pages/api/reminders.js - FIXED VERSION
 import connectDB from "../../lib/mongodb";
 import mongoose from "mongoose";
 
@@ -16,8 +16,8 @@ const ReminderSchema = new mongoose.Schema(
     location: { type: String, required: true },
     serviceType: { type: String, required: true },
     lastServiceDate: { type: Date, default: null }, // null for new services
-    scheduledDate: { type: Date, required: true }, // When service is scheduled
-    nextReminderTime: { type: Date, required: true },
+    scheduledDate: { type: Date, required: false, default: null }, // Can be null for on_hold
+    nextReminderTime: { type: Date, required: false, default: null }, // Can be null for on_hold
 
     // SIMPLIFIED STATUS WORKFLOW
     status: {
@@ -27,13 +27,14 @@ const ReminderSchema = new mongoose.Schema(
         "called", // Called but not rescheduled
         "scheduled", // Service scheduled for future date
         "completed", // Service completed
+        "on_hold", // Property is on hold
       ],
-      default: "scheduled",
+      default: "scheduled", // Default, but will be set explicitly
     },
 
     // Workflow tracking
     called: { type: Boolean, default: false },
-    scheduled: { type: Boolean, default: true },
+    scheduled: { type: Boolean, default: true }, // Default, but will be set explicitly
     completed: { type: Boolean, default: false },
     isNewService: { type: Boolean, default: true }, // Track if it's a new service
 
@@ -64,22 +65,54 @@ const ReminderSchema = new mongoose.Schema(
 // Property Schema (unchanged)
 const PropertySchema = new mongoose.Schema(
   {
-    name: String,
-    keyPerson: String,
-    contact: String,
-    location: String,
-    area: String,
-    serviceType: String,
-    amount: Number,
-    serviceDate: { type: Date, required: true },
+    name: {
+      type: String,
+      required: true,
+    },
+    keyPerson: {
+      type: String,
+      required: true,
+    },
+    contact: {
+      type: String,
+      required: true,
+    },
+    location: {
+      type: String,
+      required: true,
+    },
+    area: {
+      type: String,
+      required: false,
+    },
+    serviceType: {
+      type: String,
+      required: true,
+    },
+    amount: {
+      type: Number,
+      required: true,
+    },
+    isOnHold: {
+      type: Boolean,
+      default: false,
+    },
+    serviceDate: {
+      type: Date,
+      required: false, // Made optional - can be null/empty for "on hold" properties
+      default: null,
+    },
     serviceDetails: {
+      // Water Tank Cleaning fields
       ohTank: String,
       ugTank: String,
       sintexTank: String,
       numberOfFloors: Number,
       wing: String,
+      // Pest Control fields
       treatment: String,
       apartment: String,
+      // Motor Repairing fields
       workDescription: String,
     },
   },
@@ -126,21 +159,30 @@ export default async function handler(req, res) {
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
       allReminders.forEach((reminder) => {
-        const reminderObj = formatReminder(reminder, today);
-        const scheduledDate = new Date(reminder.scheduledDate);
+        const reminderObj = formatReminder(reminder, today); // THIS LINE IS HERE
 
-        if (reminder.completed) {
+        if (reminderObj.completed) {
           if (reminder.updatedAt >= thirtyDaysAgo) {
             completedReminders.push(reminderObj);
           }
-        } else if (scheduledDate < today) {
-          // Scheduled date has passed
+          return; // SKIP ALL OTHER CATEGORIES
+        }
+
+        // Handle on_hold reminders separately (they are not overdue/due today in the traditional sense)
+        if (reminderObj.status === "on_hold") {
+          currentReminders.push(reminderObj);
+          return;
+        }
+
+        // For non-completed, non-on_hold reminders, categorize based on date
+        const scheduledDate = new Date(reminderObj.scheduledDate);
+        scheduledDate.setHours(0, 0, 0, 0);
+
+        if (scheduledDate < today) {
           overdueReminders.push(reminderObj);
         } else if (scheduledDate.toDateString() === today.toDateString()) {
-          // Today's services
           currentReminders.push(reminderObj);
         } else {
-          // Future scheduled services
           scheduledReminders.push(reminderObj);
         }
       });
@@ -152,7 +194,7 @@ export default async function handler(req, res) {
         reminders: currentReminders,
         overdueReminders: overdueReminders,
         scheduledReminders: scheduledReminders,
-        upcomingReminders: scheduledReminders, // Add this line
+        upcomingReminders: scheduledReminders,
         completedReminders: completedReminders,
         stats: stats,
       });
@@ -181,12 +223,15 @@ export default async function handler(req, res) {
         case "add_notes":
           await handleAddNotes(reminderId, data);
           break;
+
         case "update_service":
           await handleUpdateService(reminderId, data);
           break;
+
         case "delete_reminder":
           await handleDeleteReminder(reminderId);
           break;
+
         default:
           return res.status(400).json({ message: "Invalid action" });
       }
@@ -210,17 +255,20 @@ async function updateReminderStatuses() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Find reminders that need status updates
-    const reminders = await Reminder.find({ completed: false });
+    // Find reminders that need status updates (not completed, not on_hold)
+    const remindersToUpdate = await Reminder.find({
+      completed: false,
+      status: { $ne: "on_hold" }, // Exclude on_hold reminders from status updates
+    });
 
-    for (const reminder of reminders) {
+    for (const reminder of remindersToUpdate) {
       const scheduledDate = new Date(reminder.scheduledDate);
       let newStatus = reminder.status;
 
-      // If scheduled date has passed and not completed
-      if (scheduledDate < today && !reminder.completed) {
+      // If scheduled date has passed
+      if (scheduledDate < today) {
         newStatus = "pending"; // Needs calling/action
-      } else if (scheduledDate >= today && !reminder.completed) {
+      } else {
         newStatus = "scheduled"; // Future scheduled service
       }
 
@@ -276,76 +324,96 @@ async function handleUpdateSchedule(reminderId, data) {
   });
 }
 
-// NEW: Service done handler - marks service as completed and creates next cycle
+// FIXED: Service done handler - properly marks as completed
 async function handleServiceDone(reminderId, data) {
-  const { completedDate } = data;
+  const { completedDate, nextServiceDate } = data;
   const completionDate = new Date(completedDate + "T00:00:00.000Z");
-
-  // Default next service date (1 month from completion)
-  const nextServiceDate = new Date(completionDate);
-  nextServiceDate.setMonth(nextServiceDate.getMonth() + 1);
-
-  // Use provided next date or default
-  const nextScheduledDate = data.nextServiceDate
-    ? new Date(data.nextServiceDate + "T00:00:00.000Z")
-    : nextServiceDate;
 
   const reminder = await Reminder.findById(reminderId);
   if (!reminder) {
     throw new Error("Reminder not found");
   }
 
-  // Mark current service as completed and set up next cycle
-  await Reminder.findByIdAndUpdate(reminderId, {
-    $set: {
-      completed: false, // Keep active for next cycle
-      status: "scheduled",
+  if (nextServiceDate) {
+    // Create next cycle reminder
+    const nextScheduledDate = new Date(nextServiceDate + "T00:00:00.000Z");
+
+    // Create new reminder for next cycle
+    await Reminder.create({
+      propertyId: reminder.propertyId,
+      propertyName: reminder.propertyName,
+      keyPerson: reminder.keyPerson,
+      contact: reminder.contact,
+      location: reminder.location,
+      serviceType: reminder.serviceType,
       lastServiceDate: completionDate,
       scheduledDate: nextScheduledDate,
       nextReminderTime: nextScheduledDate,
+      status: "scheduled",
       called: false,
       scheduled: true,
-      isNewService: false, // No longer a new service
+      completed: false,
+      isNewService: false,
       escalationLevel: 0,
       notificationSent: false,
+    });
+  }
+
+  // Mark current service as completed
+  await Reminder.findByIdAndUpdate(reminderId, {
+    $set: {
+      completed: true, // FIXED: Mark as completed
+      status: "completed",
+      lastServiceDate: completionDate,
+      escalationLevel: 0,
       updatedAt: new Date(),
     },
   });
 }
 
-// NEW: Update service handler - updates last service date and creates next cycle
+// FIXED: Update service handler - properly marks as completed
 async function handleUpdateService(reminderId, data) {
   const { serviceDate, nextServiceDate } = data;
   const serviceDateObj = new Date(serviceDate + "T00:00:00.000Z");
-
-  // Default next service date (1 month from service date)
-  const defaultNextServiceDate = new Date(serviceDateObj);
-  defaultNextServiceDate.setMonth(defaultNextServiceDate.getMonth() + 1);
-
-  // Use provided next date or default
-  const nextScheduledDate = nextServiceDate
-    ? new Date(nextServiceDate + "T00:00:00.000Z")
-    : defaultNextServiceDate;
 
   const reminder = await Reminder.findById(reminderId);
   if (!reminder) {
     throw new Error("Reminder not found");
   }
 
-  // Update service date and set up next cycle
-  await Reminder.findByIdAndUpdate(reminderId, {
-    $set: {
-      completed: false, // Keep active for next cycle
-      status: "scheduled",
+  if (nextServiceDate) {
+    // Create next cycle reminder
+    const nextScheduledDate = new Date(nextServiceDate + "T00:00:00.000Z");
+
+    // Create new reminder for next cycle
+    await Reminder.create({
+      propertyId: reminder.propertyId,
+      propertyName: reminder.propertyName,
+      keyPerson: reminder.keyPerson,
+      contact: reminder.contact,
+      location: reminder.location,
+      serviceType: reminder.serviceType,
       lastServiceDate: serviceDateObj,
       scheduledDate: nextScheduledDate,
       nextReminderTime: nextScheduledDate,
+      status: "scheduled",
       called: false,
       scheduled: true,
+      completed: false,
       isNewService: false,
       escalationLevel: 0,
-      callAttempts: 0, // Reset call attempts
+      callAttempts: 0,
       notificationSent: false,
+    });
+  }
+
+  // Mark current service as completed
+  await Reminder.findByIdAndUpdate(reminderId, {
+    $set: {
+      completed: true, // FIXED: Mark as completed
+      status: "completed",
+      lastServiceDate: serviceDateObj,
+      escalationLevel: 0,
       updatedAt: new Date(),
     },
   });
@@ -357,17 +425,16 @@ async function handleMarkCompleted(reminderId) {
     throw new Error("Reminder not found");
   }
 
-  const completionDate = new Date();
-
+  // Simply mark the existing reminder as completed - NO new entries
   await Reminder.findByIdAndUpdate(reminderId, {
     $set: {
       completed: true,
       status: "completed",
-      lastServiceDate: reminder.isNewService
-        ? reminder.scheduledDate
-        : completionDate,
+      lastServiceDate: new Date(), // Set completion date
+      scheduledDate: null, // Clear scheduled date for completed reminders
+      nextReminderTime: null, // Clear next reminder time
       escalationLevel: 0,
-      updatedAt: completionDate,
+      updatedAt: new Date(),
     },
   });
 }
@@ -388,33 +455,61 @@ async function handleDeleteReminder(reminderId) {
     throw new Error("Reminder not found");
   }
 
+  // If it's a completed reminder, mark property to not auto-generate
+  if (reminder.completed) {
+    await Property.findByIdAndUpdate(reminder.propertyId, {
+      autoGenerateReminders: false,
+    });
+  }
+
   await Reminder.findByIdAndDelete(reminderId);
 }
 
 // SIMPLIFIED STATS CALCULATION
 function calculateAccurateStats(reminders, today) {
   const stats = {
-    totalReminders: 0,
+    totalReminders: 0, // Total active (non-completed) reminders
     overdue: 0,
     dueToday: 0,
     upcoming: 0,
+    scheduled: 0, // Specifically for reminders with 'scheduled' status
     completed: 0,
+    critical: 0,
+    failed_contact: 0,
+    on_hold: 0, // New stat for on-hold reminders
   };
 
   reminders.forEach((reminder) => {
     if (reminder.completed) {
       stats.completed++;
     } else {
-      stats.totalReminders++;
+      stats.totalReminders++; // Count all non-completed
 
-      const scheduledDate = new Date(reminder.scheduledDate);
-
-      if (scheduledDate < today) {
-        stats.overdue++;
-      } else if (scheduledDate.toDateString() === today.toDateString()) {
-        stats.dueToday++;
+      if (reminder.status === "on_hold") {
+        stats.on_hold++;
       } else {
-        stats.upcoming++;
+        // Only process non-on_hold reminders for date-based stats
+        const scheduledDate = new Date(reminder.scheduledDate);
+
+        if (scheduledDate < today) {
+          stats.overdue++;
+        } else if (scheduledDate.toDateString() === today.toDateString()) {
+          stats.dueToday++;
+        } else {
+          stats.upcoming++;
+        }
+
+        if (reminder.status === "scheduled") {
+          stats.scheduled++;
+        }
+      }
+
+      if (reminder.escalationLevel === 2) {
+        stats.critical++;
+      }
+
+      if (reminder.callAttempts >= 4) {
+        stats.failed_contact++;
       }
     }
   });
@@ -495,16 +590,27 @@ async function sendNotification(reminder, type) {
 
 // SIMPLIFIED: Enhanced reminder formatting
 function formatReminder(reminder, today) {
-  const scheduledDate = new Date(reminder.scheduledDate);
-  scheduledDate.setHours(0, 0, 0, 0);
+  let isOverdue = false;
+  let isDueToday = false;
+  let scheduledDateObj = null;
 
-  // Determine status
-  const isOverdue = scheduledDate < today && !reminder.completed;
-  const isDueToday = scheduledDate.toDateString() === today.toDateString();
+  // If the reminder is completed, it cannot be overdue or due today
+  if (reminder.completed) {
+    return {
+      ...reminder.toObject(),
+      isOverdue: false,
+      isDueToday: false,
+    };
+  } else if (reminder.scheduledDate && reminder.status !== "on_hold") {
+    scheduledDateObj = new Date(reminder.scheduledDate);
+    scheduledDateObj.setHours(0, 0, 0, 0);
+    isOverdue = scheduledDateObj < today;
+    isDueToday = scheduledDateObj.toDateString() === today.toDateString();
+  }
 
   // Proper last service date handling
   let lastServiceDisplay = "New Service";
-  if (reminder.lastServiceDate && reminder.lastServiceDate !== null) {
+  if (reminder.lastServiceDate) {
     lastServiceDisplay = new Date(reminder.lastServiceDate).toLocaleDateString(
       "en-GB"
     );
@@ -518,14 +624,14 @@ function formatReminder(reminder, today) {
     location: reminder.location,
     serviceType: reminder.serviceType,
     lastService: lastServiceDisplay,
-    scheduledDate: reminder.scheduledDate,
+    scheduledDate: reminder.scheduledDate, // Keep original for display
     status: reminder.status,
     called: reminder.called,
     scheduled: reminder.scheduled,
     completed: reminder.completed,
     notes: reminder.notes,
-    isOverdue: isOverdue,
-    isDueToday: isDueToday,
+    isOverdue: isOverdue, // Only true for non-on_hold and past date
+    isDueToday: isDueToday, // Only true for non-on_hold and today's date
     escalationLevel: reminder.escalationLevel,
     callAttempts: reminder.callAttempts,
     isNewService: reminder.isNewService,
@@ -536,20 +642,32 @@ function formatReminder(reminder, today) {
   };
 }
 
-// SIMPLIFIED: Reminder generation from properties
 async function generateRemindersFromProperties() {
   try {
-    const properties = await Property.find({});
+    const properties = await Property.find({ autoGenerateReminders: true });
 
     for (const property of properties) {
-      if (property.serviceDate) {
-        const existingReminder = await Reminder.findOne({
-          propertyId: property._id,
-          completed: false,
-        });
+      const existingReminder = await Reminder.findOne({
+        propertyId: property._id,
+        $or: [
+          { completed: false },
+          {
+            completed: true,
+            updatedAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+          },
+        ],
+      });
 
-        if (!existingReminder) {
+      if (!existingReminder) {
+        if (property.serviceDate && !property.isOnHold) {
           const serviceDate = new Date(property.serviceDate);
+
+          if (isNaN(serviceDate.getTime())) {
+            console.warn(
+              `Skipping reminder generation for property "${property.name}" due to invalid serviceDate: ${property.serviceDate}`
+            );
+            continue;
+          }
 
           await Reminder.create({
             propertyId: property._id,
@@ -558,7 +676,8 @@ async function generateRemindersFromProperties() {
             contact: property.contact,
             location: property.location,
             serviceType: property.serviceType,
-            lastServiceDate: null, // New service
+            serviceDetails: property.serviceDetails || {},
+            lastServiceDate: null,
             scheduledDate: serviceDate,
             nextReminderTime: serviceDate,
             status: "scheduled",
@@ -568,6 +687,34 @@ async function generateRemindersFromProperties() {
             isNewService: true,
             notificationSent: false,
           });
+
+          console.log(
+            `Auto-generated scheduled reminder for: ${
+              property.name
+            } - ${serviceDate.toLocaleDateString("en-GB")}`
+          );
+        } else if (property.isOnHold || !property.serviceDate) {
+          // Create on-hold reminder for properties without service dates or explicitly on hold
+          await Reminder.create({
+            propertyId: property._id,
+            propertyName: property.name,
+            keyPerson: property.keyPerson,
+            contact: property.contact,
+            location: property.location,
+            serviceType: property.serviceType,
+            serviceDetails: property.serviceDetails || {},
+            lastServiceDate: null,
+            scheduledDate: null, // Explicitly null for on-hold
+            nextReminderTime: null, // Explicitly null for on-hold
+            status: "on_hold",
+            called: false,
+            scheduled: false,
+            completed: false,
+            isNewService: true,
+            notificationSent: false,
+          });
+
+          console.log(`Auto-generated on-hold reminder for: ${property.name}`);
         }
       }
     }

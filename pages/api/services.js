@@ -31,8 +31,39 @@ export default async function handler(req, res) {
     }
 
     if (req.method === "POST") {
-      const service = await Service.create(req.body);
+      const { name, description, active } = req.body;
+
+      // Validate required fields
+      if (!name || !description) {
+        return res.status(400).json({
+          message: "Name and description are required",
+        });
+      }
+
+      const service = await Service.create({
+        name,
+        description,
+        active: active !== undefined ? active : true,
+      });
+
       return res.status(201).json(service);
+    }
+
+    if (req.method === "PUT") {
+      const { name, description, active } = req.body;
+
+      // For PUT requests, you'll need to create a dynamic route [id].js
+      // This is just showing the structure
+      return res.status(405).json({
+        message: "PUT requests should be made to /api/services/[id]",
+      });
+    }
+
+    if (req.method === "DELETE") {
+      // For DELETE requests, you'll need to create a dynamic route [id].js
+      return res.status(405).json({
+        message: "DELETE requests should be made to /api/services/[id]",
+      });
     }
 
     return res.status(405).json({ message: "Method not allowed" });

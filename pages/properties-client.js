@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import styles from "./PropertiesClient.module.css";
+import sharedStyles from "./invoices/sharedstyles.module.css";
 
 const PropertiesClient = () => {
   const [properties, setProperties] = useState([]);
@@ -43,12 +44,17 @@ const PropertiesClient = () => {
     min: "",
     max: "",
   });
+  const [showOnHoldOnly, setShowOnHoldOnly] = useState(false);
 
   // Delete functionality states
   const [selectedProperties, setSelectedProperties] = useState(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [propertyToDelete, setPropertyToDelete] = useState(null);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [selectedProperty, setSelectedProperty] = useState(null);
+  const [propertyDetails, setPropertyDetails] = useState(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
   const serviceTypes = [
     "Water Tank Cleaning",
@@ -94,6 +100,19 @@ const PropertiesClient = () => {
     }
   };
 
+  // Add this helper function after the existing functions:
+  const isPropertyOnHold = (property) => {
+    return (
+      !property.serviceDate ||
+      property.serviceDate === "" ||
+      property.serviceDate === null
+    );
+  };
+
+  const onHoldCount = useMemo(() => {
+    return properties.filter((property) => isPropertyOnHold(property)).length;
+  }, [properties]);
+
   // Filter and Search Logic
   const filteredProperties = useMemo(() => {
     return properties.filter((property) => {
@@ -111,6 +130,9 @@ const PropertiesClient = () => {
         locationFilter === "" ||
         property.location.toLowerCase().includes(locationFilter.toLowerCase());
 
+      const isOnHold = !property.serviceDate || property.serviceDate === "";
+      const matchesOnHold = !showOnHoldOnly || isOnHold;
+
       // Amount filter
       const matchesAmount =
         (amountFilter.min === "" ||
@@ -118,7 +140,7 @@ const PropertiesClient = () => {
         (amountFilter.max === "" ||
           property.amount <= parseFloat(amountFilter.max));
 
-      return matchesSearch && matchesLocation && matchesAmount;
+      return matchesSearch && matchesLocation && matchesAmount && matchesOnHold;
     });
   }, [properties, searchTerm, locationFilter, amountFilter]);
 
@@ -228,6 +250,34 @@ const PropertiesClient = () => {
     }
   };
 
+  const handleViewProperty = async (property) => {
+    setSelectedProperty(property);
+    setViewModalOpen(true);
+    setLoadingDetails(true);
+
+    try {
+      const response = await fetch(
+        `/api/property-details?propertyId=${property._id}`
+      );
+      if (response.ok) {
+        const details = await response.json();
+        setPropertyDetails(details);
+      } else {
+        console.error("Failed to fetch property details");
+      }
+    } catch (error) {
+      console.error("Error fetching property details:", error);
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  const handleCloseViewModal = () => {
+    setViewModalOpen(false);
+    setSelectedProperty(null);
+    setPropertyDetails(null);
+  };
+
   // CSV Export Function
   const handleExportCSV = () => {
     if (filteredProperties.length === 0) {
@@ -306,6 +356,7 @@ const PropertiesClient = () => {
       serviceType: "",
       amount: "",
       serviceDate: "",
+      markAsOnHold: false,
       // Location fields
       customLocation: "",
       // Water Tank Cleaning specific fields
@@ -349,7 +400,11 @@ const PropertiesClient = () => {
         area: formData.area,
         serviceType: formData.serviceType,
         amount: parseFloat(formData.amount),
-        serviceDate: formData.serviceDate,
+        serviceDate:
+          formData.serviceDate && formData.serviceDate.trim() !== ""
+            ? formData.serviceDate
+            : null,
+        isOnHold: !formData.serviceDate || formData.serviceDate === "",
         // Service-specific data
         serviceDetails: getServiceDetails(),
       };
@@ -369,8 +424,11 @@ const PropertiesClient = () => {
         await fetchPropertiesAndStats();
 
         handleCloseModal();
+        const isOnHold = !formData.serviceDate || formData.serviceDate === "";
         alert(
-          "Property added successfully! A reminder has been created automatically."
+          isOnHold
+            ? "Property added successfully and marked as 'On Hold'. No automatic reminder created until service date is set."
+            : "Property added successfully! A reminder has been created automatically."
         );
       } else {
         throw new Error("Failed to add property");
@@ -574,6 +632,16 @@ const PropertiesClient = () => {
             <div className={styles.statIcon}>🏠</div>
           </div>
         </div>
+        <div className={`${styles.statCard} ${styles.onHoldCard}`}>
+          <div className={styles.statContent}>
+            <div className={styles.statInfo}>
+              <h3>{onHoldCount}</h3>
+              <p className={styles.statTitle}>On Hold</p>
+              <p className={styles.statDescription}>No service date set</p>
+            </div>
+            <div className={styles.statIcon}>⏸️</div>
+          </div>
+        </div>
         <div className={`${styles.statCard} ${styles.lightCard}`}>
           <div className={styles.statContent}>
             <div className={styles.statInfo}>
@@ -726,20 +794,32 @@ const PropertiesClient = () => {
                         onChange={() => handleSelectProperty(property._id)}
                       />
                     </td>
-                    <td className={styles.nameCell}>{property.name}</td>
+                    <td className={styles.nameCell}>
+                      {property.name}
+                      {(!property.serviceDate ||
+                        property.serviceDate === "") && (
+                        <span className={styles.onHoldBadge}>ON HOLD</span>
+                      )}
+                    </td>{" "}
                     <td>{property.keyPerson}</td>
                     <td>{property.contact}</td>
                     <td>{property.location}</td>
                     <td>{property.serviceType}</td>
                     <td>₹{property.amount}</td>
-                    <td>{property.serviceDate}</td>
+                    <td
+                      className={
+                        !property.serviceDate || property.serviceDate === ""
+                          ? styles.onHoldCell
+                          : ""
+                      }
+                    >
+                      {property.serviceDate || "Not Set"}
+                    </td>{" "}
                     <td>
                       <div className={styles.actionButtons}>
                         <button
                           className={styles.viewBtn}
-                          onClick={() =>
-                            alert(`View details for ${property.name}`)
-                          }
+                          onClick={() => handleViewProperty(property)}
                         >
                           View
                         </button>
@@ -791,7 +871,6 @@ const PropertiesClient = () => {
                     placeholder="e.g., Sai Samarth, Royal Heights"
                   />
                 </div>
-
                 <div className={styles.formGroup}>
                   <label htmlFor="keyPerson">Key Person *</label>
                   <input
@@ -804,7 +883,6 @@ const PropertiesClient = () => {
                     placeholder="e.g., Sarvesh Sawant"
                   />
                 </div>
-
                 <div className={styles.formGroup}>
                   <label htmlFor="contact">Contact Number *</label>
                   <input
@@ -818,7 +896,6 @@ const PropertiesClient = () => {
                     pattern="[0-9]{10}"
                   />
                 </div>
-
                 <div className={styles.formGroup}>
                   <label htmlFor="location">Main Location *</label>
                   <select
@@ -836,7 +913,6 @@ const PropertiesClient = () => {
                     ))}
                   </select>
                 </div>
-
                 {formData.location === "Other/Manual" && (
                   <div className={styles.formGroup}>
                     <label htmlFor="customLocation">Enter Location *</label>
@@ -854,7 +930,6 @@ const PropertiesClient = () => {
                     </small>
                   </div>
                 )}
-
                 <div className={styles.formGroup}>
                   <label htmlFor="area">Area</label>
                   <input
@@ -866,7 +941,6 @@ const PropertiesClient = () => {
                     placeholder="e.g., Sector 10"
                   />
                 </div>
-
                 <div className={styles.formGroup}>
                   <label htmlFor="serviceType">Service Type *</label>
                   <select
@@ -884,7 +958,6 @@ const PropertiesClient = () => {
                     ))}
                   </select>
                 </div>
-
                 <div className={styles.formGroup}>
                   <label htmlFor="amount">Amount (₹) *</label>
                   <input
@@ -899,22 +972,48 @@ const PropertiesClient = () => {
                     step="0.01"
                   />
                 </div>
-
                 <div className={styles.formGroup}>
-                  <label htmlFor="serviceDate">Service Date *</label>
+                  <label htmlFor="serviceDate">Service Date</label>
                   <input
                     type="date"
                     id="serviceDate"
                     name="serviceDate"
                     value={formData.serviceDate}
                     onChange={handleInputChange}
-                    required
                   />
                   <small>
-                    This will be the due date for the service reminder
+                    Leave empty to mark client as "On Hold". This will be the
+                    due date for the service reminder when set.
                   </small>
                 </div>
-
+                <div className={styles.formGroup}>
+                  <label className={styles.checkboxLabel}>
+                    <input
+                      type="checkbox"
+                      name="markAsOnHold"
+                      checked={
+                        !formData.serviceDate || formData.serviceDate === ""
+                      }
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setFormData((prev) => ({ ...prev, serviceDate: "" }));
+                        } else {
+                          // When unchecking, set today's date as default
+                          const today = new Date().toISOString().split("T")[0];
+                          setFormData((prev) => ({
+                            ...prev,
+                            serviceDate: today,
+                          }));
+                        }
+                      }}
+                    />
+                    Mark client as "On Hold" (no service date set)
+                  </label>
+                  <small>
+                    On Hold clients will not generate automatic reminders until
+                    a service date is set.
+                  </small>
+                </div>
                 {/* Service-specific fields */}
                 {renderServiceSpecificFields()}
               </div>
@@ -937,6 +1036,287 @@ const PropertiesClient = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Property View Modal */}
+      {viewModalOpen && selectedProperty && (
+        <div
+          className={sharedStyles.modalOverlay}
+          onClick={(e) =>
+            e.target === e.currentTarget && handleCloseViewModal()
+          }
+        >
+          <div
+            className={`${sharedStyles.modalContent} ${sharedStyles.viewModalContent}`}
+          >
+            <div className={sharedStyles.modalHeader}>
+              <h2>Property Details: {selectedProperty.name}</h2>
+              <button
+                className={sharedStyles.closeButton}
+                onClick={handleCloseViewModal}
+                type="button"
+              >
+                ×
+              </button>
+            </div>
+
+            {loadingDetails ? (
+              <div className={sharedStyles.loadingContainer}>
+                <p>Loading property details...</p>
+              </div>
+            ) : propertyDetails ? (
+              <div className={sharedStyles.viewModalBody}>
+                {/* Client Overview */}
+                <div className={sharedStyles.detailSection}>
+                  <h3>📋 Client Overview</h3>
+                  <div className={sharedStyles.detailGrid}>
+                    <div className={sharedStyles.detailItem}>
+                      <strong>Property Name:</strong> {selectedProperty.name}
+                    </div>
+                    <div className={sharedStyles.detailItem}>
+                      <strong>Key Person:</strong> {selectedProperty.keyPerson}
+                    </div>
+                    <div className={sharedStyles.detailItem}>
+                      <strong>Contact:</strong> {selectedProperty.contact}
+                    </div>
+                    <div className={sharedStyles.detailItem}>
+                      <strong>Location:</strong> {selectedProperty.location}
+                    </div>
+                    {selectedProperty.area && (
+                      <div className={sharedStyles.detailItem}>
+                        <strong>Area:</strong> {selectedProperty.area}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Service-Specific Details */}
+                <div className={sharedStyles.detailSection}>
+                  <h3>🔧 Service Details</h3>
+                  <div className={sharedStyles.serviceTypeTag}>
+                    {selectedProperty.serviceType}
+                  </div>
+
+                  {propertyDetails.serviceDetails && (
+                    <div className={sharedStyles.serviceDetailsGrid}>
+                      {selectedProperty.serviceType ===
+                        "Water Tank Cleaning" && (
+                        <>
+                          {propertyDetails.serviceDetails.ohTank && (
+                            <div className={sharedStyles.detailItem}>
+                              <strong>OH Tank:</strong>{" "}
+                              {propertyDetails.serviceDetails.ohTank}
+                            </div>
+                          )}
+                          {propertyDetails.serviceDetails.ugTank && (
+                            <div className={sharedStyles.detailItem}>
+                              <strong>UG Tank:</strong>{" "}
+                              {propertyDetails.serviceDetails.ugTank}
+                            </div>
+                          )}
+                          {propertyDetails.serviceDetails.sintexTank && (
+                            <div className={sharedStyles.detailItem}>
+                              <strong>Sintex Tank:</strong>{" "}
+                              {propertyDetails.serviceDetails.sintexTank}
+                            </div>
+                          )}
+                          {propertyDetails.serviceDetails.numberOfFloors && (
+                            <div className={sharedStyles.detailItem}>
+                              <strong>Floors:</strong>{" "}
+                              {propertyDetails.serviceDetails.numberOfFloors}
+                            </div>
+                          )}
+                          {propertyDetails.serviceDetails.wing && (
+                            <div className={sharedStyles.detailItem}>
+                              <strong>Wing:</strong>{" "}
+                              {propertyDetails.serviceDetails.wing}
+                            </div>
+                          )}
+                        </>
+                      )}
+
+                      {selectedProperty.serviceType === "Pest Control" && (
+                        <>
+                          {propertyDetails.serviceDetails.treatment && (
+                            <div className={sharedStyles.detailItem}>
+                              <strong>Treatment:</strong>{" "}
+                              {propertyDetails.serviceDetails.treatment}
+                            </div>
+                          )}
+                          {propertyDetails.serviceDetails.apartment && (
+                            <div className={sharedStyles.detailItem}>
+                              <strong>Apartment:</strong>{" "}
+                              {propertyDetails.serviceDetails.apartment}
+                            </div>
+                          )}
+                        </>
+                      )}
+
+                      {selectedProperty.serviceType ===
+                        "Motor Repairing & Rewinding" && (
+                        <>
+                          {propertyDetails.serviceDetails.workDescription && (
+                            <div className={sharedStyles.detailItem}>
+                              <strong>Work Description:</strong>
+                              <div className={sharedStyles.workDescription}>
+                                {propertyDetails.serviceDetails.workDescription}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Service History */}
+                {propertyDetails.serviceHistory &&
+                  propertyDetails.serviceHistory.length > 0 && (
+                    <div className={sharedStyles.detailSection}>
+                      <h3>📅 Service History</h3>
+                      <div className={sharedStyles.serviceHistoryList}>
+                        {propertyDetails.serviceHistory.map(
+                          (service, index) => (
+                            <div
+                              key={index}
+                              className={sharedStyles.serviceHistoryItem}
+                            >
+                              <div className={sharedStyles.serviceDate}>
+                                {new Date(
+                                  service.serviceDate
+                                ).toLocaleDateString("en-GB")}
+                              </div>
+                              <div className={sharedStyles.serviceInfo}>
+                                <strong>₹{service.amount}</strong> -{" "}
+                                {service.serviceType}
+                                {service.status && (
+                                  <span
+                                    className={`${sharedStyles.statusBadge} ${
+                                      sharedStyles[service.status.toLowerCase()]
+                                    }`}
+                                  >
+                                    {service.status}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                {/* Current Reminders */}
+                {propertyDetails.reminders &&
+                  propertyDetails.reminders.length > 0 && (
+                    <div className={sharedStyles.detailSection}>
+                      <h3>🔔 Active Reminders</h3>
+                      <div className={sharedStyles.remindersList}>
+                        {propertyDetails.reminders.map((reminder, index) => (
+                          <div
+                            key={index}
+                            className={sharedStyles.reminderItem}
+                          >
+                            <div className={sharedStyles.reminderInfo}>
+                              <strong>Next Service:</strong>{" "}
+                              {new Date(
+                                reminder.scheduledDate
+                              ).toLocaleDateString("en-GB")}
+                              <span
+                                className={`${sharedStyles.statusBadge} ${
+                                  sharedStyles[reminder.status]
+                                }`}
+                              >
+                                {reminder.status}
+                              </span>
+                            </div>
+                            {reminder.lastServiceDate && (
+                              <div className={sharedStyles.reminderSubInfo}>
+                                Last Service:{" "}
+                                {new Date(
+                                  reminder.lastServiceDate
+                                ).toLocaleDateString("en-GB")}
+                              </div>
+                            )}
+                            {reminder.notes && (
+                              <div className={sharedStyles.reminderNotes}>
+                                <em>Notes: {reminder.notes}</em>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                {/* Statistics */}
+                {propertyDetails.stats && (
+                  <div className={sharedStyles.detailSection}>
+                    <h3>📊 Statistics</h3>
+                    <div className={sharedStyles.statsGrid}>
+                      <div className={sharedStyles.statCard}>
+                        <div className={sharedStyles.statValue}>
+                          ₹{propertyDetails.stats.totalAmount || 0}
+                        </div>
+                        <div className={sharedStyles.statLabel}>
+                          Total Amount
+                        </div>
+                      </div>
+                      <div className={sharedStyles.statCard}>
+                        <div className={sharedStyles.statValue}>
+                          {propertyDetails.stats.totalServices || 0}
+                        </div>
+                        <div className={sharedStyles.statLabel}>
+                          Total Services
+                        </div>
+                      </div>
+                      <div className={sharedStyles.statCard}>
+                        <div className={sharedStyles.statValue}>
+                          {propertyDetails.stats.avgServiceInterval || 0}
+                        </div>
+                        <div className={sharedStyles.statLabel}>
+                          Avg Interval (days)
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Timeline */}
+                {propertyDetails.timeline &&
+                  propertyDetails.timeline.length > 0 && (
+                    <div className={sharedStyles.detailSection}>
+                      <h3>🕐 Timeline</h3>
+                      <div className={sharedStyles.timelineList}>
+                        {propertyDetails.timeline.map((event, index) => (
+                          <div
+                            key={index}
+                            className={sharedStyles.timelineItem}
+                          >
+                            <div className={sharedStyles.timelineDate}>
+                              {new Date(event.date).toLocaleDateString("en-GB")}
+                            </div>
+                            <div className={sharedStyles.timelineContent}>
+                              <strong>{event.type}:</strong> {event.description}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+              </div>
+            ) : (
+              <div className={sharedStyles.errorContainer}>
+                <p>Failed to load property details. Please try again.</p>
+                <button
+                  onClick={() => handleViewProperty(selectedProperty)}
+                  className={sharedStyles.retryBtn}
+                >
+                  Retry
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

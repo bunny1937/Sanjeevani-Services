@@ -340,14 +340,14 @@ async function handleReminderForCompletedService(
       // Update existing reminder with new cycle
       await Reminder.findByIdAndUpdate(existingReminder._id, {
         $set: {
-          lastServiceDate: serviceDate,
+          lastServiceDate: serviceDate, // Set the actual service date
           scheduledDate: nextScheduledDate,
           nextReminderTime: nextScheduledDate,
           status: "scheduled",
           called: false,
           scheduled: true,
           completed: false,
-          isNewService: false,
+          isNewService: false, // FIXED: Set to false since service was actually performed
           escalationLevel: 0,
           callAttempts: 0,
           notificationSent: false,
@@ -359,7 +359,9 @@ async function handleReminderForCompletedService(
       console.log(
         `Reminder updated for ${property.name} - ${
           entryData.service
-        }, next service: ${nextScheduledDate.toLocaleDateString("en-GB")}`
+        }, last service: ${serviceDate.toLocaleDateString(
+          "en-GB"
+        )}, next service: ${nextScheduledDate.toLocaleDateString("en-GB")}`
       );
     } else {
       // Create new reminder
@@ -371,14 +373,14 @@ async function handleReminderForCompletedService(
         location: property.location,
         serviceType: entryData.service,
         serviceDetails: entryData.serviceDetails || {},
-        lastServiceDate: serviceDate,
+        lastServiceDate: serviceDate, // Set the actual service date
         scheduledDate: nextScheduledDate,
         nextReminderTime: nextScheduledDate,
         status: "scheduled",
         called: false,
         scheduled: true,
         completed: false,
-        isNewService: false,
+        isNewService: false, // FIXED: Set to false since service was actually performed
         escalationLevel: 0,
         callAttempts: 0,
         notificationSent: false,
@@ -387,7 +389,9 @@ async function handleReminderForCompletedService(
       console.log(
         `New reminder created for ${property.name} - ${
           entryData.service
-        }, next service: ${nextScheduledDate.toLocaleDateString("en-GB")}`
+        }, last service: ${serviceDate.toLocaleDateString(
+          "en-GB"
+        )}, next service: ${nextScheduledDate.toLocaleDateString("en-GB")}`
       );
     }
   } catch (error) {

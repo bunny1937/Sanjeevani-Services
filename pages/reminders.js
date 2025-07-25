@@ -268,36 +268,54 @@ const Reminders = () => {
 
   // FIXED: Proper last service display function
   const formatLastService = (reminder) => {
-    // If it's a new service or lastService is "New Service", return as is
-    if (reminder.isNewService || reminder.lastService === "New Service") {
+    // PRIORITY 1: If reminder has lastServiceDate, use it (regardless of isNewService flag)
+    if (reminder.lastServiceDate) {
+      try {
+        const date = new Date(reminder.lastServiceDate);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          });
+        }
+      } catch (error) {
+        console.error("Error formatting lastServiceDate:", error);
+      }
+    }
+
+    // PRIORITY 2: Only show "New Service" if it's explicitly a new service AND has no lastServiceDate
+    if (reminder.isNewService === true && !reminder.lastServiceDate) {
       return "New Service";
     }
 
-    // If lastService is already a formatted string date, return it
-    if (
-      typeof reminder.lastService === "string" &&
-      reminder.lastService !== "New Service"
-    ) {
-      return reminder.lastService;
+    // PRIORITY 3: Try to parse lastService field if it exists
+    if (reminder.lastService && reminder.lastService !== "New Service") {
+      try {
+        const date = new Date(reminder.lastService);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          });
+        }
+        // If lastService is already a formatted string, return it
+        return reminder.lastService;
+      } catch (error) {
+        console.error("Error formatting lastService:", error);
+      }
     }
 
-    // If it's a date object or date string, format it
-    try {
-      const date = new Date(reminder.lastService);
-      if (isNaN(date)) return "New Service";
-      return date.toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      });
-      return date.toLocaleDateString("en-GB");
-    } catch (error) {
-      return "New Service";
-    }
+    // FALLBACK: Default to "New Service" only when no other data is available
+    return "New Service";
   };
 
   // FIXED: Proper date formatting function
-  const formatDate = (dateValue) => {
+  const formatDate = (dateValue, isReminderOnHold, isCompleted) => {
+    // Check completion status FIRST - this should take priority
+    if (isCompleted === true) return "Completed";
+    if (isReminderOnHold) return "Not Set"; // Explicitly for on-hold reminders
     if (!dateValue) return "Not Set";
 
     try {
@@ -308,17 +326,12 @@ const Reminders = () => {
       return "Invalid Date";
     }
   };
-
   // ENHANCED STATUS COLORS AND LOGIC
   const getStatusColor = (reminder) => {
     if (reminder.completed) return styles.statusCompleted;
-    if (
-      reminder.status === "overdue_scheduled" ||
-      reminder.status === "overdue_pending"
-    )
-      return styles.statusOverdue;
+    if (reminder.status === "on_hold") return styles.statusOnHold; // New style for on_hold
+    if (reminder.isOverdue) return styles.statusOverdue; // Use isOverdue from formatted reminder
     if (reminder.escalationLevel === 2) return styles.statusCritical;
-    if (reminder.isScheduledOverdue) return styles.statusOverdueScheduled;
     if (reminder.isDueToday) return styles.statusDueToday;
     if (reminder.status === "scheduled") return styles.statusScheduled;
     if (reminder.status === "called") return styles.statusCalled;
@@ -328,14 +341,13 @@ const Reminders = () => {
 
   const getStatusText = (reminder) => {
     if (reminder.completed) return "Completed";
-    if (reminder.status === "overdue_scheduled") return "Overdue Scheduled";
-    if (reminder.status === "overdue_pending") return "Overdue Pending";
+    if (reminder.status === "on_hold") return "On Hold"; // Explicit text for on_hold
+    if (reminder.isOverdue) return "Overdue"; // Use isOverdue from formatted reminder
     if (reminder.escalationLevel === 2) return "Critical";
-    if (reminder.isScheduledOverdue) return "Scheduled Overdue";
+    if (reminder.isDueToday) return "Due Today";
     if (reminder.status === "scheduled") return "Scheduled";
     if (reminder.status === "called") return "Called";
     if (reminder.status === "failed_contact") return "Failed Contact";
-    if (reminder.isDueToday) return "Due Today";
     return "Pending";
   };
 
@@ -407,6 +419,9 @@ const Reminders = () => {
                     </td>
                     <td className={styles.nameCell}>
                       {reminder.propertyName}
+                      {reminder.status === "on_hold" && (
+                        <span className={styles.onHoldBadge}> ON HOLD</span>
+                      )}
                       {reminder.notes && (
                         <div
                           className={styles.noteIndicator}
@@ -434,14 +449,18 @@ const Reminders = () => {
                     </td>
                     <td
                       className={
-                        reminder.isOverdue
+                        reminder.isOverdue && reminder.status !== "on_hold"
                           ? styles.overdueScheduled
-                          : reminder.isDueToday
+                          : reminder.isDueToday && reminder.status !== "on_hold"
                           ? styles.dueToday
                           : ""
                       }
                     >
-                      {formatDate(reminder.scheduledDate)}
+                      {formatDate(
+                        reminder.scheduledDate,
+                        reminder.status === "on_hold",
+                        reminder.completed
+                      )}
                     </td>
                     <td>
                       <span className={getStatusColor(reminder)}>
@@ -452,75 +471,99 @@ const Reminders = () => {
                       <div className={styles.actionButtons}>
                         {!reminder.completed && (
                           <>
-                            {/* CALL BUTTON - Show for overdue items that haven't been called */}
-                            {/* CALL BUTTON - Show for overdue items, changes to delete after 4 attempts */}
-                            {reminder.isOverdue &&
-                              reminder.callAttempts < 4 && (
-                                <button
-                                  onClick={() => handleMarkCalled(reminder._id)}
-                                  className={styles.callButton}
-                                  title={`Mark as Called (${reminder.callAttempts}/4 attempts)`}
-                                >
-                                  📞
-                                  {reminder.callAttempts > 0 && (
-                                    <span className={styles.attemptBadge}>
-                                      {reminder.callAttempts}
-                                    </span>
+                            {/* Actions for non-on-hold reminders */}
+                            {reminder.status !== "on_hold" && (
+                              <>
+                                {/* CALL BUTTON - Show for overdue items that haven't been called */}
+                                {reminder.isOverdue &&
+                                  reminder.callAttempts < 4 && (
+                                    <button
+                                      onClick={() =>
+                                        handleMarkCalled(reminder._id)
+                                      }
+                                      className={styles.callButton}
+                                      title={`Mark as Called (${reminder.callAttempts}/4 attempts)`}
+                                    >
+                                      📞
+                                      {reminder.callAttempts > 0 && (
+                                        <span className={styles.attemptBadge}>
+                                          {reminder.callAttempts}
+                                        </span>
+                                      )}
+                                    </button>
                                   )}
-                                </button>
-                              )}
 
-                            {/* DELETE BUTTON - Show after 4 call attempts */}
-                            {reminder.isOverdue &&
-                              reminder.callAttempts >= 4 && (
-                                <button
-                                  onClick={() =>
-                                    handleDeleteReminder(reminder._id)
-                                  }
-                                  className={styles.deleteButton}
-                                  title="Delete (Unresponsive after 4 attempts)"
-                                >
-                                  🗑️
-                                </button>
-                              )}
+                                {/* DELETE BUTTON - Show after 4 call attempts */}
+                                {reminder.isOverdue &&
+                                  reminder.callAttempts >= 4 && (
+                                    <button
+                                      onClick={() =>
+                                        handleDeleteReminder(reminder._id)
+                                      }
+                                      className={styles.deleteButton}
+                                      title="Delete (Unresponsive after 4 attempts)"
+                                    >
+                                      🗑️
+                                    </button>
+                                  )}
 
-                            {/* UPDATE SCHEDULE BUTTON - Show for called items or scheduled items */}
-                            {(reminder.called ||
-                              reminder.status === "scheduled") && (
+                                {/* UPDATE SCHEDULE BUTTON - Show for called items, scheduled items */}
+                                {(reminder.called ||
+                                  reminder.status === "scheduled") && (
+                                  <button
+                                    onClick={() =>
+                                      handleUpdateSchedule(reminder)
+                                    }
+                                    className={styles.scheduleButton}
+                                    title="Update Schedule"
+                                  >
+                                    📅
+                                  </button>
+                                )}
+
+                                {/* UPDATE SERVICE BUTTON - Show for called items, scheduled items */}
+                                {(reminder.called ||
+                                  reminder.status === "scheduled") && (
+                                  <button
+                                    onClick={() =>
+                                      handleUpdateService(reminder)
+                                    }
+                                    className={styles.updateServiceButton}
+                                    title="Update Service"
+                                  >
+                                    🔧
+                                  </button>
+                                )}
+
+                                {/* SERVICE DONE BUTTON - Show for scheduled items on/after scheduled date */}
+                                {reminder.status === "scheduled" &&
+                                  (reminder.isDueToday ||
+                                    reminder.isOverdue) && (
+                                    <button
+                                      onClick={() =>
+                                        handleServiceDone(reminder)
+                                      }
+                                      className={styles.serviceDoneButton}
+                                      title="Service Done"
+                                    >
+                                      ✅
+                                    </button>
+                                  )}
+                              </>
+                            )}
+
+                            {/* Actions for on-hold reminders */}
+                            {reminder.status === "on_hold" && (
                               <button
                                 onClick={() => handleUpdateSchedule(reminder)}
                                 className={styles.scheduleButton}
-                                title="Update Schedule"
+                                title="Set Service Date"
                               >
-                                📅
+                                📅 Set Date
                               </button>
                             )}
 
-                            {/* UPDATE SERVICE BUTTON - Show for called items or scheduled items */}
-                            {(reminder.called ||
-                              reminder.status === "scheduled") && (
-                              <button
-                                onClick={() => handleUpdateService(reminder)}
-                                className={styles.updateServiceButton}
-                                title="Update Service"
-                              >
-                                🔧
-                              </button>
-                            )}
-
-                            {/* SERVICE DONE BUTTON - Show for scheduled items on/after scheduled date */}
-                            {reminder.status === "scheduled" &&
-                              (reminder.isDueToday || reminder.isOverdue) && (
-                                <button
-                                  onClick={() => handleServiceDone(reminder)}
-                                  className={styles.serviceDoneButton}
-                                  title="Service Done"
-                                >
-                                  ✅
-                                </button>
-                              )}
-
-                            {/* NOTES BUTTON */}
+                            {/* NOTES BUTTON (always show) */}
                             <button
                               onClick={() => openNotesModal(reminder)}
                               className={styles.notesButton}
@@ -529,7 +572,7 @@ const Reminders = () => {
                               📋
                             </button>
 
-                            {/* COMPLETED BUTTON */}
+                            {/* COMPLETED BUTTON (always show for non-completed) */}
                             <button
                               onClick={() => handleMarkCompleted(reminder._id)}
                               className={styles.completeButton}
@@ -537,7 +580,7 @@ const Reminders = () => {
                             >
                               ✅
                             </button>
-                            {/* DELETE BUTTON */}
+                            {/* DELETE BUTTON (always show for non-completed) */}
                             <button
                               onClick={() => handleDeleteReminder(reminder._id)}
                               className={styles.deleteButton}
@@ -546,6 +589,16 @@ const Reminders = () => {
                               🗑️
                             </button>
                           </>
+                        )}
+                        {/* DELETE BUTTON for completed reminders */}
+                        {reminder.completed && (
+                          <button
+                            onClick={() => handleDeleteReminder(reminder._id)}
+                            className={styles.deleteButton}
+                            title="Delete Completed Reminder"
+                          >
+                            🗑️
+                          </button>
                         )}
                       </div>
                     </td>

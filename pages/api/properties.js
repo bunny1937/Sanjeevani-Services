@@ -1,18 +1,58 @@
-// pages/api/properties.js - Updated with DELETE functionality
+// pages/api/properties.js - Fixed to properly handle on-hold properties
 import connectDB from "../../lib/mongodb.js";
 import mongoose from "mongoose";
 
-// Property Schema - Updated with serviceDetails
+// Property Schema - Updated to make serviceDate truly optional
 const PropertySchema = new mongoose.Schema(
   {
-    name: String,
-    keyPerson: String,
-    contact: String,
-    location: String,
-    area: String,
-    serviceType: String,
-    amount: Number,
-    serviceDate: { type: Date, required: true },
+    name: {
+      type: String,
+      required: true,
+    },
+    keyPerson: {
+      type: String,
+      required: true,
+    },
+    contact: {
+      type: String,
+      required: true,
+    },
+    location: {
+      type: String,
+      required: true,
+    },
+    area: {
+      type: String,
+      required: false,
+    },
+    serviceType: {
+      type: String,
+      required: true,
+    },
+    amount: {
+      type: Number,
+      required: true,
+    },
+    isOnHold: {
+      type: Boolean,
+      default: false,
+    },
+    serviceDate: {
+      type: Date,
+      required: false,
+      default: null,
+      validate: {
+        validator: function (value) {
+          // Allow null/undefined for on-hold properties
+          if (this.isOnHold) {
+            return true; // Always valid for on-hold properties
+          }
+          // For non-on-hold properties, serviceDate can still be optional
+          return true;
+        },
+        message: "Service date validation failed",
+      },
+    },
     serviceDetails: {
       // Water Tank Cleaning fields
       ohTank: String,
@@ -30,7 +70,7 @@ const PropertySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// SIMPLIFIED Reminder Schema - only scheduledDate
+// Enhanced Reminder Schema for on-hold properties
 const ReminderSchema = new mongoose.Schema(
   {
     propertyId: {
@@ -56,16 +96,25 @@ const ReminderSchema = new mongoose.Schema(
       // Motor Repairing fields
       workDescription: String,
     },
-    lastServiceDate: { type: Date, default: null }, // null for new services
-    scheduledDate: { type: Date, required: true }, // Only scheduled date
-    nextReminderTime: { type: Date, required: true },
+    lastServiceDate: { type: Date, default: null },
+    // Renamed serviceDate to scheduledDate for clarity and consistency with reminders.js
+    scheduledDate: {
+      type: Date,
+      required: false, // Can be null for on-hold reminders
+      default: null,
+    },
+    nextReminderTime: {
+      type: Date,
+      required: false, // Can be null for on-hold reminders
+      default: null,
+    },
     status: {
       type: String,
-      enum: ["pending", "called", "scheduled", "completed"],
-      default: "scheduled",
+      enum: ["pending", "called", "scheduled", "completed", "on_hold"],
+      default: "scheduled", // Default to scheduled, will be overridden for on_hold
     },
     called: { type: Boolean, default: false },
-    scheduled: { type: Boolean, default: true },
+    scheduled: { type: Boolean, default: true }, // Default to true, will be overridden for on_hold
     completed: { type: Boolean, default: false },
     notes: { type: String },
     customReminderHours: { type: Number, default: 0 },
@@ -87,12 +136,12 @@ const ReminderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-const Property =
-  mongoose.models.Property ||
-  mongoose.model("Property", PropertySchema, "properties");
+// Force model recreation to ensure schema updates
+delete mongoose.models.Property;
+delete mongoose.models.Reminder;
 
-const Reminder =
-  mongoose.models.Reminder || mongoose.model("Reminder", ReminderSchema);
+const Property = mongoose.model("Property", PropertySchema, "properties");
+const Reminder = mongoose.model("Reminder", ReminderSchema);
 
 export default async function handler(req, res) {
   try {
@@ -103,12 +152,12 @@ export default async function handler(req, res) {
 
       // Calculate stats
       const totalProperties = properties.length;
+      const onHoldProperties = properties.filter((p) => p.isOnHold).length;
 
       // Calculate unique locations
       const uniqueLocations = new Set();
       properties.forEach((property) => {
         if (property.location) {
-          // Extract main location (before comma if exists)
           const mainLocation = property.location.split(",")[0].trim();
           uniqueLocations.add(mainLocation);
         }
@@ -116,31 +165,96 @@ export default async function handler(req, res) {
 
       const stats = {
         totalProperties,
+        onHoldProperties,
+        activeProperties: totalProperties - onHoldProperties,
         uniqueLocations: uniqueLocations.size,
       };
 
       // Format properties for display
+      // Format properties for display
       const formattedProperties = properties.map((property) => ({
         ...property,
+        // Ensure serviceDate is formatted or explicitly "On Hold"
         serviceDate: property.serviceDate
           ? new Date(property.serviceDate).toLocaleDateString("en-GB")
-          : null,
+          : property.isOnHold
+          ? "On Hold" // Display "On Hold" if isOnHold is true and serviceDate is null
+          : null, // Otherwise, it's truly null/not set
+        statusDisplay: property.isOnHold ? "On Hold" : "Active",
       }));
-
-      return res.status(200).json({
-        properties: formattedProperties,
-        stats,
-      });
+      return res.status(200).json({ properties: formattedProperties, stats });
     }
 
     if (req.method === "POST") {
+      // Validate and sanitize the request body
+      const {
+        name,
+        keyPerson,
+        contact,
+        location,
+        area,
+        serviceType,
+        amount,
+        serviceDate,
+        serviceDetails,
+      } = req.body;
+
+      // Prepare the property data
+      const propertyData = {
+        name: name?.trim(),
+        keyPerson: keyPerson?.trim(),
+        contact: contact?.trim(),
+        location: location?.trim(),
+        area: area?.trim() || "",
+        serviceType: serviceType?.trim(),
+        amount: parseFloat(amount),
+        serviceDetails: serviceDetails || {},
+      };
+
+      // Handle serviceDate and isOnHold logic
+      if (!serviceDate || serviceDate.trim() === "") {
+        propertyData.serviceDate = null;
+        propertyData.isOnHold = true;
+        console.log(
+          "Property will be created as ON HOLD (no service date provided)"
+        );
+      } else {
+        try {
+          propertyData.serviceDate = new Date(serviceDate);
+          propertyData.isOnHold = false;
+          console.log(
+            "Property will be created with service date:",
+            propertyData.serviceDate
+          );
+        } catch (error) {
+          console.error("Invalid service date provided:", serviceDate);
+          propertyData.serviceDate = null;
+          propertyData.isOnHold = true;
+        }
+      }
+
+      console.log("Creating property with data:", propertyData);
+
       // Create the property
-      const property = await Property.create(req.body);
+      const property = await Property.create(propertyData);
+      console.log("Property created successfully:", property.name);
 
-      // Create corresponding reminder
-      await createReminderFromProperty(property);
+      // Always create a reminder - even for on-hold properties
+      const reminder = await createReminderFromProperty(property);
 
-      return res.status(201).json(property);
+      if (reminder) {
+        console.log("Reminder created successfully");
+      } else {
+        console.log("Reminder creation handled appropriately");
+      }
+
+      return res.status(201).json({
+        property,
+        reminder: reminder ? "created" : "on_hold",
+        message: property.isOnHold
+          ? "Property created and placed on hold. You can set the service date later."
+          : "Property and reminder created successfully.",
+      });
     }
 
     if (req.method === "DELETE") {
@@ -166,13 +280,14 @@ export default async function handler(req, res) {
         });
 
         // Delete associated reminders
-        await Reminder.deleteMany({
+        const reminderDeleteResult = await Reminder.deleteMany({
           propertyId: { $in: objectIds },
         });
 
         return res.status(200).json({
-          message: `Successfully deleted ${deleteResult.deletedCount} property(ies) and associated reminders`,
+          message: `Successfully deleted ${deleteResult.deletedCount} property(ies) and ${reminderDeleteResult.deletedCount} associated reminder(s)`,
           deletedCount: deleteResult.deletedCount,
+          deletedReminders: reminderDeleteResult.deletedCount,
         });
       } catch (error) {
         console.error("Error deleting properties:", error);
@@ -193,13 +308,14 @@ export default async function handler(req, res) {
   }
 }
 
-// SIMPLIFIED: Helper function to create reminder from property
 async function createReminderFromProperty(property) {
   try {
-    const serviceDate = new Date(property.serviceDate);
+    console.log(
+      `Creating reminder for property: ${property.name}, isOnHold: ${property.isOnHold}`
+    );
 
-    // Create reminder with serviceDate as scheduledDate only
-    await Reminder.create({
+    // Create reminder data
+    const reminderData = {
       propertyId: property._id,
       propertyName: property.name,
       keyPerson: property.keyPerson,
@@ -207,25 +323,59 @@ async function createReminderFromProperty(property) {
       location: property.location,
       serviceType: property.serviceType,
       serviceDetails: property.serviceDetails || {},
-      lastServiceDate: null, // New service - will show "New Service"
-      scheduledDate: serviceDate, // Only scheduled date
-      nextReminderTime: serviceDate,
-      status: "scheduled",
-      called: false,
-      scheduled: true,
+      lastServiceDate: null, // New service
       isNewService: true,
-      completed: false,
       escalationLevel: 0,
       callAttempts: 0,
       notificationSent: false,
-    });
+    };
+
+    if (property.isOnHold || !property.serviceDate) {
+      // Create on-hold reminder
+      reminderData.scheduledDate = null; // Explicitly null for on-hold
+      reminderData.nextReminderTime = null; // Explicitly null for on-hold
+      reminderData.status = "on_hold";
+      reminderData.called = false;
+      reminderData.scheduled = false;
+      reminderData.completed = false;
+
+      console.log("Creating ON HOLD reminder");
+    } else {
+      // Create scheduled reminder
+      const serviceDate = new Date(property.serviceDate);
+
+      // Validate that serviceDate is a valid date
+      if (isNaN(serviceDate.getTime())) {
+        console.error(`Invalid service date for property "${property.name}"`);
+        return null;
+      }
+
+      reminderData.scheduledDate = serviceDate; // Use scheduledDate
+      reminderData.nextReminderTime = serviceDate;
+      reminderData.status = "scheduled";
+      reminderData.called = false;
+      reminderData.scheduled = true;
+      reminderData.completed = false;
+
+      console.log(
+        "Creating SCHEDULED reminder for:",
+        serviceDate.toLocaleDateString("en-GB")
+      );
+    }
+
+    console.log("Reminder data:", reminderData);
+
+    const reminder = await Reminder.create(reminderData);
 
     console.log(
-      `Reminder created for property: ${
-        property.name
-      } scheduled for ${serviceDate.toLocaleDateString("en-GB")}`
+      `Reminder created successfully for property: ${property.name} (${
+        property.status === "on_hold" ? "ON HOLD" : "SCHEDULED"
+      })`
     );
+
+    return reminder;
   } catch (error) {
     console.error("Error creating reminder:", error);
+    return null;
   }
 }

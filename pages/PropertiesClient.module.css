@@ -309,160 +309,71 @@
 }
 /* Add these styles to your PropertiesClient.module.css file */
 
-/* Modal Styles */
-.modalOverlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  padding: 20px;
-}
-
-.modalContent {
-  background: white;
+.statusBadge {
+  padding: 4px 8px;
   border-radius: 12px;
-  width: 100%;
-  max-width: 800px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
-    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
 }
 
-.modalHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 24px 24px 0 24px;
-  border-bottom: 1px solid #e5e5e5;
-  margin-bottom: 24px;
+.statusBadge.pending {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeeba;
 }
 
-.modalHeader h2 {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #1f2937;
+.statusBadge.called {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
 }
 
-.closeButton {
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #6b7280;
-  padding: 4px;
-  border-radius: 4px;
-  transition: background-color 0.2s;
+.statusBadge.scheduled {
+  background: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
 }
 
-.closeButton:hover {
-  background-color: #f3f4f6;
-  color: #374151;
+.statusBadge.completed {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
 }
 
-.form {
-  padding: 0 24px 24px 24px;
+.statusBadge.initial {
+  background: #e2e3e5;
+  color: #383d41;
+  border: 1px solid #d6d8db;
 }
 
-.formGrid {
+.statsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 20px;
-  margin-bottom: 32px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
 }
 
-.formGroup {
-  display: flex;
-  flex-direction: column;
+/* .statCard {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+  border: 1px solid #dee2e6;
+} */
+
+.statValue {
+  font-size: 24px;
+  font-weight: bold;
+  color: #007bff;
+  margin-bottom: 5px;
 }
 
-.formGroup label {
-  font-weight: 500;
-  margin-bottom: 8px;
-  color: #374151;
+.statLabel {
   font-size: 14px;
-}
-
-.formGroup input,
-.formGroup select {
-  padding: 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 14px;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.formGroup input:focus,
-.formGroup select:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.formGroup input::placeholder {
-  color: #9ca3af;
-}
-
-.formGroup select {
-  cursor: pointer;
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-  background-position: right 12px center;
-  background-repeat: no-repeat;
-  background-size: 16px;
-  padding-right: 40px;
-}
-
-.formActions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  padding-top: 24px;
-  border-top: 1px solid #e5e5e5;
-}
-
-.cancelButton {
-  padding: 12px 24px;
-  border: 1px solid #d1d5db;
-  background: white;
-  color: #374151;
-  border-radius: 8px;
+  color: #666;
   font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s, border-color 0.2s;
 }
 
-.cancelButton:hover:not(:disabled) {
-  background-color: #f9fafb;
-  border-color: #9ca3af;
-}
-
-.submitButton {
-  padding: 12px 24px;
-  background: #3b82f6;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.submitButton:hover:not(:disabled) {
-  background: #2563eb;
-}
-
-.submitButton:disabled,
-.cancelButton:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 @media (max-width: 768px) {
   .container {
     padding: 1rem;
@@ -502,5 +413,27 @@
   .cancelButton,
   .submitButton {
     width: 100%;
+  }
+  .viewModalContent {
+    margin: 10px;
+    max-width: calc(100vw - 20px);
+  }
+
+  .detailGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .serviceDetailsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .reminderInfo {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
   }
 }

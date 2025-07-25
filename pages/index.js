@@ -198,49 +198,72 @@ const Dashboard = () => {
       ...(reminders?.completedReminders || []),
     ];
 
-    // Water Tank Cleaning count
-    const waterTankCleaningFromDailyBook = dailyBook.filter(
-      (entry) =>
+    // // Water Tank Cleaning count
+    // const waterTankCleaningFromDailyBook = dailyBook.filter(
+    //   (entry) =>
+    //     entry.service &&
+    //     entry.service.toLowerCase().includes("water tank cleaning")
+    // ).length;
+
+    // const waterTankCleaningFromReminders = allReminders.filter(
+    //   (reminder) =>
+    //     reminder.serviceType &&
+    //     reminder.serviceType.toLowerCase().includes("water tank cleaning")
+    // ).length;
+
+    const waterTankCleaningAmount = dailyBook.reduce((sum, entry) => {
+      if (
         entry.service &&
         entry.service.toLowerCase().includes("water tank cleaning")
-    ).length;
+      ) {
+        return sum + (entry.amount || 0);
+      }
+      return sum;
+    }, 0);
+    const waterTankCleaning = `₹${waterTankCleaningAmount.toLocaleString(
+      "en-IN"
+    )}`;
 
-    const waterTankCleaningFromReminders = allReminders.filter(
-      (reminder) =>
-        reminder.serviceType &&
-        reminder.serviceType.toLowerCase().includes("water tank cleaning")
-    ).length;
+    // // Pest Control count
+    // const pestControlFromDailyBook = dailyBook.filter(
+    //   (entry) =>
+    //     entry.service && entry.service.toLowerCase().includes("pest control")
+    // ).length;
 
-    const waterTankCleaning =
-      waterTankCleaningFromDailyBook + waterTankCleaningFromReminders;
+    // const pestControlFromReminders = allReminders.filter(
+    //   (reminder) =>
+    //     reminder.serviceType &&
+    //     reminder.serviceType.toLowerCase().includes("pest control")
+    // ).length;
 
-    // Pest Control count
-    const pestControlFromDailyBook = dailyBook.filter(
-      (entry) =>
-        entry.service && entry.service.toLowerCase().includes("pest control")
-    ).length;
+    const pestControlAmount = dailyBook.reduce((sum, entry) => {
+      if (
+        entry.service &&
+        entry.service.toLowerCase().includes("pest control")
+      ) {
+        return sum + (entry.amount || 0);
+      }
+      return sum;
+    }, 0);
+    const pestControl = `₹${pestControlAmount.toLocaleString("en-IN")}`;
+    // // Motor Repairing count (checking all variations)
+    // const motorRepairingFromDailyBook = dailyBook.filter(
+    //   (entry) => entry.service && entry.service.toLowerCase().includes("motor")
+    // ).length;
 
-    const pestControlFromReminders = allReminders.filter(
-      (reminder) =>
-        reminder.serviceType &&
-        reminder.serviceType.toLowerCase().includes("pest control")
-    ).length;
+    // const motorRepairingFromReminders = allReminders.filter(
+    //   (reminder) =>
+    //     reminder.serviceType &&
+    //     reminder.serviceType.toLowerCase().includes("motor")
+    // ).length;
 
-    const pestControl = pestControlFromDailyBook + pestControlFromReminders;
-
-    // Motor Repairing count (checking all variations)
-    const motorRepairingFromDailyBook = dailyBook.filter(
-      (entry) => entry.service && entry.service.toLowerCase().includes("motor")
-    ).length;
-
-    const motorRepairingFromReminders = allReminders.filter(
-      (reminder) =>
-        reminder.serviceType &&
-        reminder.serviceType.toLowerCase().includes("motor")
-    ).length;
-
-    const motorRepairing =
-      motorRepairingFromDailyBook + motorRepairingFromReminders;
+    const motorRepairingAmount = dailyBook.reduce((sum, entry) => {
+      if (entry.service && entry.service.toLowerCase().includes("motor")) {
+        return sum + (entry.amount || 0);
+      }
+      return sum;
+    }, 0);
+    const motorRepairing = `₹${motorRepairingAmount.toLocaleString("en-IN")}`;
 
     // Calculate active laborers
     const activeLabor = laborers.filter(

@@ -23,6 +23,12 @@ const Layout = ({ children }) => {
     { name: "Expenses", href: "/expenses", icon: "💰", color: "yellow" },
     { name: "Labor", href: "/labor", icon: "👷", color: "indigo" },
     { name: "Reports", href: "/reports", icon: "📋", color: "pink" },
+    {
+      name: "Invoices",
+      href: "/invoices",
+      icon: "💼",
+      color: "orange",
+    },
   ];
 
   return (
