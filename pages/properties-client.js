@@ -7,6 +7,7 @@ import sharedStyles from "./invoices/sharedstyles.module.css";
 
 const PropertiesClient = () => {
   const [properties, setProperties] = useState([]);
+  const [services, setServices] = useState([]); // New state for services
   const [stats, setStats] = useState({
     totalProperties: 0,
     uniqueLocations: 0,
@@ -23,17 +24,8 @@ const PropertiesClient = () => {
     serviceDate: "",
     // Location fields
     customLocation: "",
-    // Water Tank Cleaning specific fields
-    ohTank: "",
-    ugTank: "",
-    sintexTank: "",
-    numberOfFloors: "",
-    wing: "",
-    // Pest Control specific fields
-    treatment: "",
-    apartment: "",
-    // Motor Repairing specific fields
-    workDescription: "",
+    // Dynamic service details will be stored here
+    serviceDetails: {},
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -55,13 +47,6 @@ const PropertiesClient = () => {
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [propertyDetails, setPropertyDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
-
-  const serviceTypes = [
-    "Water Tank Cleaning",
-    "Pest Control",
-    "Motor Repairing & Rewinding",
-  ];
-
   const locations = [
     "Kalyan-W",
     "Kalyan-E",
@@ -76,10 +61,9 @@ const PropertiesClient = () => {
     "Other/Manual",
   ];
 
-  const apartmentTypes = ["1RK", "1BHK", "2BHK", "3BHK", "4BHK", "5BHK"];
-
   useEffect(() => {
     fetchPropertiesAndStats();
+    fetchServices();
   }, []);
 
   const fetchPropertiesAndStats = async () => {
@@ -99,13 +83,27 @@ const PropertiesClient = () => {
       console.error("Error fetching properties and stats:", error);
     }
   };
+  const fetchServices = async () => {
+    try {
+      const response = await fetch("/api/services");
+      const data = await response.json();
+      setServices(data.services || []);
+    } catch (error) {
+      console.error("Error fetching services:", error);
+    }
+  };
 
+  // Get the selected service object
+  const selectedService = useMemo(() => {
+    return services.find((service) => service.name === formData.serviceType);
+  }, [services, formData.serviceType]);
   // Add this helper function after the existing functions:
   const isPropertyOnHold = (property) => {
     return (
-      !property.serviceDate ||
+      property.serviceDate === null ||
       property.serviceDate === "" ||
-      property.serviceDate === null
+      property.serviceDate === "On Hold" ||
+      property.isOnHold === true
     );
   };
 
@@ -142,7 +140,7 @@ const PropertiesClient = () => {
 
       return matchesSearch && matchesLocation && matchesAmount && matchesOnHold;
     });
-  }, [properties, searchTerm, locationFilter, amountFilter]);
+  }, [properties, searchTerm, locationFilter, amountFilter, showOnHoldOnly]);
 
   // Get unique locations for filter dropdown
   const uniqueLocations = useMemo(() => {
@@ -359,25 +357,41 @@ const PropertiesClient = () => {
       markAsOnHold: false,
       // Location fields
       customLocation: "",
-      // Water Tank Cleaning specific fields
-      ohTank: "",
-      ugTank: "",
-      sintexTank: "",
-      numberOfFloors: "",
-      wing: "",
-      // Pest Control specific fields
-      treatment: "",
-      apartment: "",
-      // Motor Repairing specific fields
-      workDescription: "",
+      // Reset dynamic service details
+      serviceDetails: {},
     });
   };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
+
+    // Handle service type change - reset service details when service type changes
+    if (name === "serviceType") {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+        serviceDetails: {}, // Reset service details when service type changes
+      }));
+      return;
+    }
+
+    // Handle service detail fields
+    if (name.startsWith("serviceDetail_")) {
+      const fieldId = name.replace("serviceDetail_", "");
+      setFormData((prev) => ({
+        ...prev,
+        serviceDetails: {
+          ...prev.serviceDetails,
+          [fieldId]: type === "checkbox" ? checked : value,
+        },
+      }));
+      return;
+    }
+
+    // Handle regular form fields
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: type === "checkbox" ? checked : value,
     }));
   };
 
@@ -405,8 +419,8 @@ const PropertiesClient = () => {
             ? formData.serviceDate
             : null,
         isOnHold: !formData.serviceDate || formData.serviceDate === "",
-        // Service-specific data
-        serviceDetails: getServiceDetails(),
+        // Dynamic service details
+        serviceDetails: formData.serviceDetails,
       };
 
       const response = await fetch("/api/properties", {
@@ -441,30 +455,6 @@ const PropertiesClient = () => {
     }
   };
 
-  const getServiceDetails = () => {
-    switch (formData.serviceType) {
-      case "Water Tank Cleaning":
-        return {
-          ohTank: formData.ohTank,
-          ugTank: formData.ugTank,
-          sintexTank: formData.sintexTank,
-          numberOfFloors: formData.numberOfFloors,
-          wing: formData.wing,
-        };
-      case "Pest Control":
-        return {
-          treatment: formData.treatment,
-          apartment: formData.apartment,
-        };
-      case "Motor Repairing & Rewinding":
-        return {
-          workDescription: formData.workDescription,
-        };
-      default:
-        return {};
-    }
-  };
-
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) {
       handleCloseModal();
@@ -472,128 +462,123 @@ const PropertiesClient = () => {
   };
 
   const renderServiceSpecificFields = () => {
-    switch (formData.serviceType) {
-      case "Water Tank Cleaning":
-        return (
-          <>
-            <div className={styles.formGroup}>
-              <label htmlFor="ohTank">OH Tank</label>
+    if (
+      !selectedService ||
+      !selectedService.subFields ||
+      selectedService.subFields.length === 0
+    ) {
+      return null;
+    }
+
+    // Sort sub-fields by order
+    const sortedFields = [...selectedService.subFields].sort(
+      (a, b) => (a.order || 0) - (b.order || 0)
+    );
+
+    return sortedFields.map((field) => {
+      const fieldName = `serviceDetail_${field.id}`;
+      const fieldValue =
+        formData.serviceDetails[field.id] || field.defaultValue || "";
+
+      switch (field.type) {
+        case "input":
+          return (
+            <div key={field.id} className={styles.formGroup}>
+              <label htmlFor={fieldName}>
+                {field.label} {field.required && "*"}
+              </label>
               <input
                 type="text"
-                id="ohTank"
-                name="ohTank"
-                value={formData.ohTank}
+                id={fieldName}
+                name={fieldName}
+                value={fieldValue}
                 onChange={handleInputChange}
-                placeholder="e.g., 2 tanks"
+                required={field.required}
+                placeholder={field.placeholder || ""}
               />
             </div>
+          );
 
-            <div className={styles.formGroup}>
-              <label htmlFor="ugTank">UG Tank</label>
-              <input
-                type="text"
-                id="ugTank"
-                name="ugTank"
-                value={formData.ugTank}
-                onChange={handleInputChange}
-                placeholder="e.g., 1 tank"
-              />
-            </div>
-
-            <div className={styles.formGroup}>
-              <label htmlFor="sintexTank">Sintex Tank</label>
-              <input
-                type="text"
-                id="sintexTank"
-                name="sintexTank"
-                value={formData.sintexTank}
-                onChange={handleInputChange}
-                placeholder="e.g., 3 tanks"
-              />
-            </div>
-
-            <div className={styles.formGroup}>
-              <label htmlFor="numberOfFloors">Number of Floors</label>
+        case "number":
+          return (
+            <div key={field.id} className={styles.formGroup}>
+              <label htmlFor={fieldName}>
+                {field.label} {field.required && "*"}
+              </label>
               <input
                 type="number"
-                id="numberOfFloors"
-                name="numberOfFloors"
-                value={formData.numberOfFloors}
+                id={fieldName}
+                name={fieldName}
+                value={fieldValue}
                 onChange={handleInputChange}
-                placeholder="e.g., 15"
-                min="1"
+                required={field.required}
+                placeholder={field.placeholder || ""}
+                min="0"
               />
             </div>
+          );
 
-            <div className={styles.formGroup}>
-              <label htmlFor="wing">Wing</label>
-              <input
-                type="text"
-                id="wing"
-                name="wing"
-                value={formData.wing}
-                onChange={handleInputChange}
-                placeholder="e.g., A, B, C"
-              />
-            </div>
-          </>
-        );
-
-      case "Pest Control":
-        return (
-          <>
-            <div className={styles.formGroup}>
-              <label htmlFor="treatment">Treatment *</label>
-              <input
-                type="text"
-                id="treatment"
-                name="treatment"
-                value={formData.treatment}
-                onChange={handleInputChange}
-                required
-                placeholder="e.g., Cockroach / Termite / Bed Bugs / etc"
-              />
-            </div>
-
-            <div className={styles.formGroup}>
-              <label htmlFor="apartment">Apartment *</label>
+        case "select":
+          return (
+            <div key={field.id} className={styles.formGroup}>
+              <label htmlFor={fieldName}>
+                {field.label} {field.required && "*"}
+              </label>
               <select
-                id="apartment"
-                name="apartment"
-                value={formData.apartment}
+                id={fieldName}
+                name={fieldName}
+                value={fieldValue}
                 onChange={handleInputChange}
-                required
+                required={field.required}
               >
-                <option value="">Select Apartment Type</option>
-                {apartmentTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
+                <option value="">Select {field.label}</option>
+                {field.options &&
+                  field.options.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
               </select>
             </div>
-          </>
-        );
+          );
 
-      case "Motor Repairing & Rewinding":
-        return (
-          <div className={styles.formGroup}>
-            <label htmlFor="workDescription">Describe the Work *</label>
-            <textarea
-              id="workDescription"
-              name="workDescription"
-              value={formData.workDescription}
-              onChange={handleInputChange}
-              required
-              placeholder="Describe the motor repair work to be done..."
-              rows="4"
-            />
-          </div>
-        );
+        case "textarea":
+          return (
+            <div key={field.id} className={styles.formGroup}>
+              <label htmlFor={fieldName}>
+                {field.label} {field.required && "*"}
+              </label>
+              <textarea
+                id={fieldName}
+                name={fieldName}
+                value={fieldValue}
+                onChange={handleInputChange}
+                required={field.required}
+                placeholder={field.placeholder || ""}
+                rows="4"
+              />
+            </div>
+          );
 
-      default:
-        return null;
-    }
+        case "checkbox":
+          return (
+            <div key={field.id} className={styles.formGroup}>
+              <label className={styles.checkboxLabel}>
+                <input
+                  type="checkbox"
+                  name={fieldName}
+                  checked={!!fieldValue}
+                  onChange={handleInputChange}
+                />
+                {field.label} {field.required && "*"}
+              </label>
+            </div>
+          );
+
+        default:
+          return null;
+      }
+    });
   };
 
   const isAllSelected =
@@ -635,7 +620,7 @@ const PropertiesClient = () => {
         <div className={`${styles.statCard} ${styles.onHoldCard}`}>
           <div className={styles.statContent}>
             <div className={styles.statInfo}>
-              <h3>{onHoldCount}</h3>
+              <h3>{stats.onHoldProperties}</h3>
               <p className={styles.statTitle}>On Hold</p>
               <p className={styles.statDescription}>No service date set</p>
             </div>
@@ -859,6 +844,7 @@ const PropertiesClient = () => {
 
             <form onSubmit={handleSubmit} className={styles.form}>
               <div className={styles.formGrid}>
+                {/* Property Name */}
                 <div className={styles.formGroup}>
                   <label htmlFor="name">Property Name *</label>
                   <input
@@ -871,6 +857,8 @@ const PropertiesClient = () => {
                     placeholder="e.g., Sai Samarth, Royal Heights"
                   />
                 </div>
+
+                {/* Key Person */}
                 <div className={styles.formGroup}>
                   <label htmlFor="keyPerson">Key Person *</label>
                   <input
@@ -883,6 +871,8 @@ const PropertiesClient = () => {
                     placeholder="e.g., Sarvesh Sawant"
                   />
                 </div>
+
+                {/* Contact Number */}
                 <div className={styles.formGroup}>
                   <label htmlFor="contact">Contact Number *</label>
                   <input
@@ -896,6 +886,8 @@ const PropertiesClient = () => {
                     pattern="[0-9]{10}"
                   />
                 </div>
+
+                {/* Main Location */}
                 <div className={styles.formGroup}>
                   <label htmlFor="location">Main Location *</label>
                   <select
@@ -913,6 +905,8 @@ const PropertiesClient = () => {
                     ))}
                   </select>
                 </div>
+
+                {/* Custom Location */}
                 {formData.location === "Other/Manual" && (
                   <div className={styles.formGroup}>
                     <label htmlFor="customLocation">Enter Location *</label>
@@ -930,6 +924,8 @@ const PropertiesClient = () => {
                     </small>
                   </div>
                 )}
+
+                {/* Area */}
                 <div className={styles.formGroup}>
                   <label htmlFor="area">Area</label>
                   <input
@@ -941,23 +937,8 @@ const PropertiesClient = () => {
                     placeholder="e.g., Sector 10"
                   />
                 </div>
-                <div className={styles.formGroup}>
-                  <label htmlFor="serviceType">Service Type *</label>
-                  <select
-                    id="serviceType"
-                    name="serviceType"
-                    value={formData.serviceType}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    <option value="">Select Service Type</option>
-                    {serviceTypes.map((service) => (
-                      <option key={service} value={service}>
-                        {service}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+
+                {/* Amount */}
                 <div className={styles.formGroup}>
                   <label htmlFor="amount">Amount (₹) *</label>
                   <input
@@ -967,10 +948,19 @@ const PropertiesClient = () => {
                     value={formData.amount}
                     onChange={handleInputChange}
                     required
-                    placeholder="e.g., 2500"
+                    placeholder={
+                      selectedService?.defaultPrice
+                        ? `Default: ₹${selectedService.defaultPrice}`
+                        : "e.g., 2500"
+                    }
                     min="0"
                     step="0.01"
                   />
+                  {selectedService?.defaultPrice && (
+                    <small>
+                      Default price: ₹{selectedService.defaultPrice}
+                    </small>
+                  )}
                 </div>
                 <div className={styles.formGroup}>
                   <label htmlFor="serviceDate">Service Date</label>
@@ -981,13 +971,10 @@ const PropertiesClient = () => {
                     value={formData.serviceDate}
                     onChange={handleInputChange}
                   />
-                  <small>
-                    Leave empty to mark client as "On Hold". This will be the
-                    due date for the service reminder when set.
-                  </small>
-                </div>
-                <div className={styles.formGroup}>
-                  <label className={styles.checkboxLabel}>
+                  <label
+                    className={styles.checkboxLabel}
+                    style={{ marginTop: "0.5rem" }}
+                  >
                     <input
                       type="checkbox"
                       name="markAsOnHold"
@@ -998,7 +985,6 @@ const PropertiesClient = () => {
                         if (e.target.checked) {
                           setFormData((prev) => ({ ...prev, serviceDate: "" }));
                         } else {
-                          // When unchecking, set today's date as default
                           const today = new Date().toISOString().split("T")[0];
                           setFormData((prev) => ({
                             ...prev,
@@ -1010,14 +996,77 @@ const PropertiesClient = () => {
                     Mark client as "On Hold" (no service date set)
                   </label>
                   <small>
+                    Leave empty to mark client as "On Hold". This will be the
+                    due date for the service reminder when set.
+                  </small>
+                  <small>
                     On Hold clients will not generate automatic reminders until
                     a service date is set.
                   </small>
                 </div>
-                {/* Service-specific fields */}
+                {/* Service Type */}
+                <div className={styles.formGroup}>
+                  <label htmlFor="serviceType">Service Type *</label>
+                  <select
+                    id="serviceType"
+                    name="serviceType"
+                    value={formData.serviceType}
+                    onChange={handleInputChange}
+                    required
+                  >
+                    <option value="">Select Service Type</option>
+                    {services
+                      .filter((service) => service.active)
+                      .map((service) => (
+                        <option key={service._id} value={service.name}>
+                          {service.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                {/* ✅ FIXED: Service Date + On Hold checkbox grouped properly */}
+
+                {/* Dynamic service fields */}
                 {renderServiceSpecificFields()}
+
+                {/* Service Information Section */}
+                {selectedService && (
+                  <div
+                    className={styles.formGroup}
+                    style={{ gridColumn: "1 / -1" }}
+                  >
+                    <div className={styles.serviceInfo}>
+                      <h4>Service Information</h4>
+                      {selectedService.description && (
+                        <p>
+                          <strong>Description:</strong>{" "}
+                          {selectedService.description}
+                        </p>
+                      )}
+                      {selectedService.scopeOfWork && (
+                        <p>
+                          <strong>Scope of Work:</strong>{" "}
+                          {selectedService.scopeOfWork}
+                        </p>
+                      )}
+                      {selectedService.frequency && (
+                        <p>
+                          <strong>Frequency:</strong>{" "}
+                          {selectedService.frequency}
+                        </p>
+                      )}
+                      {selectedService.notes && (
+                        <p>
+                          <strong>Notes:</strong> {selectedService.notes}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
+              {/* Form Actions */}
               <div className={styles.formActions}>
                 <button
                   type="button"
@@ -1039,6 +1088,7 @@ const PropertiesClient = () => {
           </div>
         </div>
       )}
+
       {/* Property View Modal */}
       {viewModalOpen && selectedProperty && (
         <div

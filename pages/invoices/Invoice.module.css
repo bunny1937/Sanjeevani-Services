@@ -5,7 +5,6 @@
   margin: 0 auto;
   padding: 20px;
   display: flex;
-  flex-direction: column;
   gap: 30px;
 }
 
@@ -25,11 +24,10 @@
 /* Edit Controls */
 .editControls {
   flex: 1;
-  max-width: 400px;
+  max-width: 500px;
   background: #f8f9fa;
   padding: 20px;
   border-radius: 8px;
-  height: fit-content;
   position: sticky;
   top: 20px;
 }
@@ -170,7 +168,7 @@
 }
 
 .downloadBtn {
-  background: #e67e22;
+  background: rgb(234 88 12);
   color: white;
 }
 
@@ -179,228 +177,657 @@
 }
 
 /* Invoice Preview */
-.invoicePreview {
-  flex: 2;
+
+.invoiceMainContainer {
+  margin: 0 auto;
   background: white;
-  padding: 30px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
   font-family: Arial, sans-serif;
-  line-height: 1.4;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  font-size: 12px;
+  line-height: 1.3;
+  padding: 2rem;
+  box-sizing: border-box;
+  color: #333;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.invoiceContainer {
+  margin: 0 auto;
+  background: white;
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+  line-height: 1.3;
+  padding: 2rem;
+  box-sizing: border-box;
+  color: #333;
+  display: flex;
+  gap: 20px;
+}
+/* Edit Controls Section */
+.editControls {
+  width: 300px;
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  height: fit-content;
+  position: sticky;
+  top: 20px;
 }
 
-.invoiceHeader {
-  text-align: center;
-  margin-bottom: 20px;
-  border-bottom: 2px solid #000;
-  padding-bottom: 15px;
+.editControls h2 {
+  color: rgb(234 88 12);
+  margin: 0 0 20px 0;
+  font-size: 18px;
 }
 
-.invoiceHeader h1 {
-  font-size: 28px;
+.controlSection {
+  margin-bottom: 25px;
+  padding: 15px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+
+.controlSection h3 {
+  color: #333;
+  margin: 0 0 15px 0;
+  font-size: 14px;
   font-weight: bold;
+  border-bottom: 2px solid rgb(234 88 12);
+  padding-bottom: 5px;
+}
+
+.propertyInfoSummary {
+  background: #fff3e0;
+  padding: 10px;
+  border-radius: 4px;
+  border-left: 4px solid rgb(234 88 12);
+}
+
+.propertyInfoSummary p {
+  margin: 5px 0;
+  font-size: 12px;
+}
+
+.configGrid {
+  display: grid;
+  gap: 15px;
+}
+
+.configItem {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.configItem label {
+  font-weight: bold;
+  font-size: 12px;
+  color: #333;
+}
+
+.configItem input,
+.configItem select {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.configItem input[type="checkbox"] {
+  width: auto;
+  margin-right: 8px;
+}
+
+.historyBtn {
+  background: rgb(234 88 12);
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-top: 10px;
+}
+
+.historyBtn:hover {
+  background: #d35400;
+}
+
+.lineItemEditor {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #fafafa;
+}
+
+.lineItemRow {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr auto;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.lineItemRow input {
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 11px;
+}
+
+.removeBtn {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  width: 25px;
+  height: 25px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lineItemEditor textarea {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 11px;
+  resize: vertical;
+  font-family: Arial, sans-serif;
+}
+
+.addBtn {
+  background: #27ae60;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.addBtn:hover {
+  background: #219a52;
+}
+
+.toggleBtn {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.toggleBtn:hover {
+  background: #2980b9;
+}
+
+.advancedOptions {
+  margin-top: 15px;
+  padding: 15px;
+  background: #f0f8ff;
+  border-radius: 4px;
+  border: 1px solid #3498db;
+}
+
+.advancedOptions h4 {
   margin: 0 0 10px 0;
   color: #2c3e50;
 }
 
+.specialNotesConfig {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.specialNotesConfig label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.specialNotesConfig textarea {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 11px;
+  margin-top: 5px;
+  font-family: Arial, sans-serif;
+}
+
+.controlActions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.generateBtn {
+  background: rgb(234 88 12);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.generateBtn:hover {
+  background: #d35400;
+}
+
+.downloadBtn {
+  background: #27ae60;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.downloadBtn:hover {
+  background: #219a52;
+}
+
+/* Invoice Preview Section */
+.invoicePreview {
+  flex: 1;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.invoiceHeader {
+  padding: 20px;
+  border-bottom: 3px solid rgb(234 88 12);
+  background: white;
+}
+
+.companyInfo h1 {
+  font-size: 36px;
+  font-weight: bold;
+  color: rgb(234 88 12);
+  margin: 0;
+  font-family: "Devanagari MT", serif;
+}
+
 .serviceTypes {
   display: flex;
-  justify-content: space-between;
-  font-size: 10px;
-  font-weight: bold;
-  color: #555;
-  margin-top: 5px;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
 }
 
 .serviceTypes span {
-  white-space: nowrap;
+  background: rgb(234 88 12);
+  color: white;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: bold;
+  border-radius: 3px;
 }
 
 .invoiceTitle {
   text-align: center;
-  margin-bottom: 20px;
+  padding: 20px;
 }
 
 .invoiceTitle h2 {
-  font-size: 24px;
+  font-size: 48px;
   font-weight: bold;
+  color: #333;
   margin: 0;
-  color: #2c3e50;
+  letter-spacing: 2px;
 }
 
 .invoiceDetails {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 20px;
-  font-size: 14px;
+  padding: 20px;
+  background: white;
 }
 
-.leftSection,
-.rightSection {
+.leftSection {
   flex: 1;
 }
 
+.leftSection p {
+  margin: 3px 0;
+  font-size: 13px;
+}
+
 .rightSection {
+  flex: 1;
   text-align: right;
+}
+
+.rightSection p {
+  margin: 5px 0;
+  font-size: 13px;
+}
+
+.rightSection strong {
+  color: #333;
+  font-weight: bold;
 }
 
 .subject {
-  margin-bottom: 20px;
-  font-size: 14px;
+  text-align: center;
+  margin: 25px 20px;
+  padding: 15px;
+  background-color: #fdf2e9;
+  border: 2px solid rgb(234 88 12);
+  border-radius: 4px;
 }
 
-.subject p {
-  margin: 5px 0;
+.subject p:first-child {
+  margin: 0 0 5px 0;
+  font-size: 14px;
+  font-weight: bold;
+  color: #333;
+  text-decoration: underline;
+}
+
+.subject p:last-child {
+  margin: 0;
+  font-size: 14px;
+  font-weight: bold;
+  color: rgb(234 88 12);
 }
 
 .servicesTable {
-  width: 100%;
+  width: calc(100% - 40px);
+  margin: 20px;
   border-collapse: collapse;
-  margin-bottom: 20px;
-  font-size: 12px;
-}
-
-.servicesTable th,
-.servicesTable td {
-  border: 1px solid #000;
-  padding: 8px;
-  text-align: left;
-  vertical-align: top;
+  font-size: 11px;
 }
 
 .servicesTable th {
-  background-color: #f5f5f5;
-  font-weight: bold;
+  background-color: rgb(234 88 12);
+  color: white;
+  padding: 10px 8px;
   text-align: center;
+  font-weight: bold;
+  border: 1px solid #d35400;
+  font-size: 12px;
+}
+
+.servicesTable td {
+  border: 1px solid #bdc3c7;
+  padding: 10px 8px;
+  text-align: center;
+  vertical-align: top;
 }
 
 .servicesTable td:first-child {
-  text-align: center;
-  width: 60px;
+  text-align: end;
+  width: 8%;
+  font-weight: bold;
 }
 
-.servicesTable td:nth-child(3),
-.servicesTable td:nth-child(4),
+.servicesTable td:nth-child(3) {
+  text-align: center;
+  width: 15%;
+}
+
+.servicesTable td:nth-child(4) {
+  text-align: center;
+  width: 16%;
+  font-weight: bold;
+}
+
 .servicesTable td:nth-child(5) {
-  text-align: right;
+  text-align: center;
+  width: 16%;
+  font-weight: bold;
 }
 
 .particularCell {
-  line-height: 1.3;
+  width: 45%;
+  text-align: left;
+  line-height: 1.4;
 }
 
 .scopeOfWork {
-  font-size: 11px;
-  color: #666;
-  margin-top: 5px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #eee;
   font-style: italic;
+  color: #666;
+  font-size: 10px;
 }
 
 .totalsSection {
+  margin: 20px;
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 20px;
 }
 
 .totalsTable {
-  min-width: 300px;
+  width: 300px;
 }
 
 .totalRow {
   display: flex;
   justify-content: space-between;
-  padding: 5px 0;
-  border-bottom: 1px solid #ddd;
-  font-size: 14px;
+  padding: 8px 15px;
+  border: 1px solid #bdc3c7;
+  background-color: #f8f9fa;
+}
+
+.totalRow:first-child {
+  background-color: rgb(234 88 12);
+  color: white;
+  font-weight: bold;
+}
+
+.totalRow:nth-child(2) {
+  background-color: rgb(234 88 12);
+  color: white;
+  font-weight: bold;
 }
 
 .totalRow:last-child {
-  border-bottom: 2px solid #000;
+  background-color: rgb(234 88 12);
+  color: white;
   font-weight: bold;
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .amountInWords {
-  margin-bottom: 15px;
-  font-size: 14px;
+  margin: 20px;
   padding: 10px;
-  background-color: #f9f9f9;
-  border-left: 4px solid #3498db;
+  background-color: #fdf2e9;
+  border-left: 4px solid rgb(234 88 12);
+  border-radius: 4px;
 }
 
-.contractDetails {
-  margin-bottom: 20px;
-  font-size: 14px;
-}
-
-.scopeOfWork {
-  margin-bottom: 20px;
+.amountInWords p {
+  margin: 0;
   font-size: 13px;
 }
 
+.amountInWords strong {
+  color: #333;
+}
+
+.contractDetails {
+  margin: 20px;
+  font-size: 13px;
+}
+
+.contractDetails strong {
+  color: #333;
+}
+
+.scopeOfWork {
+  margin: 20px;
+  padding: 15px;
+  background: #f9f9f9;
+  border-radius: 4px;
+}
+
 .scopeOfWork p {
-  margin: 3px 0;
+  margin: 8px 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.scopeOfWork p:first-child {
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 12px;
 }
 
 .additionalNotes {
-  margin-bottom: 20px;
-  font-size: 12px;
+  margin: 20px;
   padding: 10px;
-  background-color: #fff3cd;
-  border: 1px solid #ffeaa7;
+  background: #fff3e0;
+  border-left: 4px solid rgb(234 88 12);
   border-radius: 4px;
 }
 
 .additionalNotes p {
-  margin: 5px 0;
+  margin: 0;
+  font-size: 12px;
+  color: #666;
 }
 
 .generalNotes {
-  margin-bottom: 30px;
-  font-size: 13px;
+  margin: 20px;
   padding: 15px;
-  background-color: #e8f4fd;
+  background: #f0f8ff;
   border-radius: 4px;
 }
 
 .generalNotes p {
-  margin: 5px 0;
+  margin: 8px 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.generalNotes p:first-child {
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 12px;
 }
 
 .footer {
-  border-top: 2px solid #000;
-  padding-top: 20px;
-  margin-bottom: 20px;
+  margin-top: 30px;
+  padding: 20px;
+  border-top: 2px solid rgb(234 88 12);
+  background: #fafafa;
 }
 
 .companyDetails {
   text-align: center;
-  margin-bottom: 30px;
-  font-size: 12px;
+  margin-bottom: 20px;
 }
 
 .companyDetails p {
   margin: 5px 0;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.companyDetails p:first-child {
+  background-color: rgb(234 88 12);
+  color: white;
+  padding: 8px;
   font-weight: bold;
+  margin: 0 0 10px 0;
 }
 
 .signature {
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  margin-top: 30px;
+}
+
+.signature div {
   text-align: right;
-  margin-bottom: 20px;
+}
+
+.signature p:first-child {
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 40px;
 }
 
 .signatureSpace {
+  width: 200px;
   height: 40px;
-  margin: 20px 0;
+  border-bottom: 1px solid #333;
+  margin: 10px 0;
+}
+
+.signature p:last-child {
+  font-weight: bold;
+  color: #333;
+  margin-top: 5px;
 }
 
 .thankYou {
   text-align: center;
+  margin: 20px;
+  background-color: rgb(234 88 12);
+  color: white;
+  padding: 15px;
   font-size: 16px;
   font-weight: bold;
-  color: #27ae60;
-  margin-top: 20px;
+  border-radius: 4px;
+}
+
+/* Print Styles */
+@media print {
+  .editControls {
+    display: none;
+  }
+
+  .invoiceContainer {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    display: block;
+  }
+
+  .invoicePreview {
+    border: none;
+    border-radius: 0;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .invoiceContainer {
+    flex-direction: column;
+    width: 100%;
+    padding: 10px;
+  }
+
+  .editControls {
+    width: 100%;
+    position: static;
+    margin-bottom: 20px;
+  }
+
+  .invoicePreview {
+    width: 100%;
+  }
 }
 
 /* Property List Styles */
@@ -642,9 +1069,10 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  align-items: center;
   margin-bottom: 20px;
   padding-bottom: 15px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 14px solid rgb(234 88 12);
 }
 
 .invoiceNumber h3 {
@@ -790,7 +1218,7 @@
 }
 
 .editInvoiceBtn:hover {
-  background: #e67e22;
+  background: rgb(234 88 12);
 }
 
 .deleteInvoiceBtn {
@@ -806,9 +1234,11 @@
 @media (max-width: 1024px) {
   .invoiceContainer {
     flex-direction: column;
+    padding: 0;
   }
 
   .editControls {
+    padding: 10px;
     max-width: none;
     position: static;
   }

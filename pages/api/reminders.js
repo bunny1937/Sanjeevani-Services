@@ -135,7 +135,7 @@ export default async function handler(req, res) {
       await updateReminderStatuses();
 
       // THEN: Check for notifications
-      await checkAndSendNotifications();
+      await checkAndSendNotifications(); // This will now handle all notification types
 
       // Generate reminders from properties if needed
       await generateRemindersFromProperties();
@@ -159,7 +159,7 @@ export default async function handler(req, res) {
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
       allReminders.forEach((reminder) => {
-        const reminderObj = formatReminder(reminder, today); // THIS LINE IS HERE
+        const reminderObj = formatReminder(reminder, today);
 
         if (reminderObj.completed) {
           if (reminder.updatedAt >= thirtyDaysAgo) {
@@ -194,7 +194,7 @@ export default async function handler(req, res) {
         reminders: currentReminders,
         overdueReminders: overdueReminders,
         scheduledReminders: scheduledReminders,
-        upcomingReminders: scheduledReminders,
+        upcomingReminders: scheduledReminders, // This is already correct, as scheduledReminders are future ones
         completedReminders: completedReminders,
         stats: stats,
       });
@@ -228,6 +228,10 @@ export default async function handler(req, res) {
           await handleUpdateService(reminderId, data);
           break;
 
+        case "set_custom_reminder": // NEW ACTION
+          await handleSetCustomReminder(reminderId, data);
+          break;
+
         case "delete_reminder":
           await handleDeleteReminder(reminderId);
           break;
@@ -255,27 +259,39 @@ async function updateReminderStatuses() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Find reminders that need status updates (not completed, not on_hold)
     const remindersToUpdate = await Reminder.find({
       completed: false,
-      status: { $ne: "on_hold" }, // Exclude on_hold reminders from status updates
+      status: { $ne: "on_hold" },
     });
 
     for (const reminder of remindersToUpdate) {
       const scheduledDate = new Date(reminder.scheduledDate);
       let newStatus = reminder.status;
+      let newEscalationLevel = reminder.escalationLevel;
 
-      // If scheduled date has passed
       if (scheduledDate < today) {
         newStatus = "pending"; // Needs calling/action
+        // Logic to increase escalation level for overdue reminders
+        if (reminder.callAttempts >= 4) {
+          newEscalationLevel = 2; // Critical after 4 failed attempts
+        } else if (reminder.callAttempts >= 2) {
+          newEscalationLevel = 1; // Urgent after 2 failed attempts
+        } else {
+          newEscalationLevel = 0; // Default for overdue but few attempts
+        }
       } else {
         newStatus = "scheduled"; // Future scheduled service
+        newEscalationLevel = 0; // Reset escalation for scheduled reminders
       }
 
-      // Update if status changed
-      if (newStatus !== reminder.status) {
+      // Update if status or escalation level changed
+      if (
+        newStatus !== reminder.status ||
+        newEscalationLevel !== reminder.escalationLevel
+      ) {
         await Reminder.findByIdAndUpdate(reminder._id, {
           status: newStatus,
+          escalationLevel: newEscalationLevel, // Update escalation level
           updatedAt: new Date(),
         });
       }
@@ -475,7 +491,6 @@ function calculateAccurateStats(reminders, today) {
     scheduled: 0, // Specifically for reminders with 'scheduled' status
     completed: 0,
     critical: 0,
-    failed_contact: 0,
     on_hold: 0, // New stat for on-hold reminders
   };
 
@@ -507,35 +522,90 @@ function calculateAccurateStats(reminders, today) {
       if (reminder.escalationLevel === 2) {
         stats.critical++;
       }
-
-      if (reminder.callAttempts >= 4) {
-        stats.failed_contact++;
-      }
     }
   });
 
   return stats;
 }
-
+async function handleSetCustomReminder(reminderId, data) {
+  const { hours } = data;
+  const now = new Date();
+  const customReminderTime = new Date(now.getTime() + hours * 60 * 60 * 1000);
+  await Reminder.findByIdAndUpdate(reminderId, {
+    $set: {
+      nextReminderTime: customReminderTime, // Set a specific time for the custom reminder
+      customReminderHours: hours, // Store the hours for reference
+      notificationSent: false, // Reset notification status for this custom reminder
+      updatedAt: new Date(),
+    },
+  });
+}
 // SIMPLIFIED NOTIFICATION SYSTEM
 async function checkAndSendNotifications() {
   try {
-    const today = new Date();
+    const now = new Date();
+    const today = new Date(now);
     today.setHours(0, 0, 0, 0);
 
-    // Find overdue reminders
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+
+    // 1. Overdue Reminders (scheduledDate is in the past)
     const overdueReminders = await Reminder.find({
       scheduledDate: { $lt: today },
       completed: false,
-      notificationSent: false,
+      status: { $ne: "on_hold" },
+      notificationSent: false, // Only send if not already sent for this overdue state
     });
 
-    // Send notifications for overdue reminders
     for (const reminder of overdueReminders) {
       await sendNotification(reminder, "overdue");
     }
+
+    // 2. Due Today Reminders (scheduledDate is today)
+    const dueTodayReminders = await Reminder.find({
+      scheduledDate: { $gte: today, $lt: tomorrow },
+      completed: false,
+      status: { $ne: "on_hold" },
+      notificationSent: false, // Only send if not already sent for today
+    });
+
+    for (const reminder of dueTodayReminders) {
+      await sendNotification(reminder, "due_today");
+    }
+
+    // 3. Upcoming Reminders (scheduled for tomorrow, sent at 12:00 AM)
+    const upcomingTomorrowReminders = await Reminder.find({
+      scheduledDate: {
+        $gte: tomorrow,
+        $lt: new Date(tomorrow.getTime() + 24 * 60 * 60 * 1000),
+      }, // Scheduled for tomorrow
+      completed: false,
+      status: { $ne: "on_hold" },
+      notificationSent: false, // Only send if not already sent for tomorrow
+    });
+
+    for (const reminder of upcomingTomorrowReminders) {
+      // Ensure this notification is sent only once at 12 AM
+      // This requires a more robust notification tracking or a separate cron job.
+      // For simplicity, we'll mark it as sent.
+      await sendNotification(reminder, "upcoming_tomorrow");
+    }
+
+    // 4. Custom Follow-up Reminders
+    const customReminders = await Reminder.find({
+      nextReminderTime: { $lte: now }, // Reminder time has passed
+      completed: false,
+      notificationSent: false, // Only send if not already sent for this custom time
+      customReminderHours: { $gt: 0 }, // Ensure it's a custom reminder
+    });
+
+    for (const reminder of customReminders) {
+      await sendNotification(reminder, "custom_followup");
+    }
   } catch (error) {
-    console.error("Error checking notifications:", error);
+    console.error("Error checking and sending notifications:", error);
   }
 }
 
@@ -543,47 +613,73 @@ async function checkAndSendNotifications() {
 async function sendNotification(reminder, type) {
   let message = "";
   let urgency = "normal";
+  let notificationType = ""; // To store in history
+
+  const propertyName = reminder.propertyName;
+  const serviceType = reminder.serviceType;
+  const scheduledDate = reminder.scheduledDate
+    ? new Date(reminder.scheduledDate).toLocaleDateString("en-GB")
+    : "Not Set";
+  const keyPerson = reminder.keyPerson;
+  const contact = reminder.contact;
+  const location = reminder.location;
 
   switch (type) {
     case "overdue":
-      message = `🚨 OVERDUE: ${reminder.propertyName} - ${
-        reminder.serviceType
-      } service was scheduled for ${new Date(
-        reminder.scheduledDate
-      ).toLocaleDateString("en-GB")}`;
+      message = `🚨 OVERDUE: ${propertyName} - ${serviceType} service was scheduled for ${scheduledDate}. Action required!`;
       urgency = "high";
+      notificationType = "Overdue";
       break;
     case "due_today":
-      message = `🔔 TODAY: ${reminder.propertyName} - ${reminder.serviceType} service is scheduled for today`;
+      message = `🔔 DUE TODAY: ${propertyName} - ${serviceType} service is scheduled for today, ${scheduledDate}.`;
       urgency = "normal";
+      notificationType = "Due Today";
       break;
+    case "upcoming_tomorrow":
+      message = `🗓️ UPCOMING: ${propertyName} - ${serviceType} service is scheduled for tomorrow, ${scheduledDate}. Prepare for action!`;
+      urgency = "normal";
+      notificationType = "Upcoming Tomorrow";
+      break;
+    case "custom_followup":
+      message = `⏰ FOLLOW-UP: ${propertyName} - ${serviceType} service. This is a custom reminder you set for ${reminder.customReminderHours} hours ago.`;
+      urgency = "medium";
+      notificationType = "Custom Follow-up";
+      break;
+    default:
+      message = `Unknown reminder type for ${propertyName}.`;
+      notificationType = "Unknown";
   }
 
-  const fullMessage = `${message}
-📍 Location: ${reminder.location}
-👤 Contact: ${reminder.keyPerson} (${reminder.contact})
-📅 Scheduled Date: ${new Date(reminder.scheduledDate).toLocaleDateString(
-    "en-GB"
-  )}
-🔔 Urgency: ${urgency.toUpperCase()}`;
+  const fullMessage = `${message}\n📍 Location: ${location}\n👤 Contact: ${keyPerson} (${contact})`;
 
   console.log("=".repeat(60));
-  console.log(`${urgency.toUpperCase()} NOTIFICATION`);
+  console.log(`${urgency.toUpperCase()} NOTIFICATION - ${notificationType}`);
   console.log("=".repeat(60));
   console.log(fullMessage);
   console.log("=".repeat(60));
 
-  // Mark as notified
-  await Reminder.findByIdAndUpdate(reminder._id, {
+  // In a real application, you would integrate with a third-party service here.
+  // For now, we're just logging to the console.
+
+  // Mark as notified and update nextReminderTime for custom reminders
+  const updateFields = {
     notificationSent: true,
     $push: {
       notificationHistory: {
         sentAt: new Date(),
-        type: type,
+        type: notificationType,
         message: fullMessage,
       },
     },
-  });
+  };
+
+  // For custom follow-ups, clear the nextReminderTime after sending
+  if (type === "custom_followup") {
+    updateFields.nextReminderTime = null;
+    updateFields.customReminderHours = 0; // Reset custom hours
+  }
+
+  await Reminder.findByIdAndUpdate(reminder._id, updateFields);
 
   return true;
 }
@@ -592,23 +688,26 @@ async function sendNotification(reminder, type) {
 function formatReminder(reminder, today) {
   let isOverdue = false;
   let isDueToday = false;
+  let isScheduledOverdue = false; // ADD THIS
   let scheduledDateObj = null;
 
-  // If the reminder is completed, it cannot be overdue or due today
   if (reminder.completed) {
     return {
       ...reminder.toObject(),
       isOverdue: false,
       isDueToday: false,
+      isScheduledOverdue: false, // ADD THIS
     };
   } else if (reminder.scheduledDate && reminder.status !== "on_hold") {
     scheduledDateObj = new Date(reminder.scheduledDate);
     scheduledDateObj.setHours(0, 0, 0, 0);
     isOverdue = scheduledDateObj < today;
     isDueToday = scheduledDateObj.toDateString() === today.toDateString();
+    // isScheduledOverdue can be true if status is 'scheduled' but date is past
+    isScheduledOverdue =
+      reminder.status === "scheduled" && scheduledDateObj < today; // ADD THIS
   }
 
-  // Proper last service date handling
   let lastServiceDisplay = "New Service";
   if (reminder.lastServiceDate) {
     lastServiceDisplay = new Date(reminder.lastServiceDate).toLocaleDateString(
@@ -624,14 +723,15 @@ function formatReminder(reminder, today) {
     location: reminder.location,
     serviceType: reminder.serviceType,
     lastService: lastServiceDisplay,
-    scheduledDate: reminder.scheduledDate, // Keep original for display
+    scheduledDate: reminder.scheduledDate,
     status: reminder.status,
     called: reminder.called,
     scheduled: reminder.scheduled,
     completed: reminder.completed,
     notes: reminder.notes,
-    isOverdue: isOverdue, // Only true for non-on_hold and past date
-    isDueToday: isDueToday, // Only true for non-on_hold and today's date
+    isOverdue: isOverdue,
+    isDueToday: isDueToday,
+    isScheduledOverdue: isScheduledOverdue, // ADD THIS
     escalationLevel: reminder.escalationLevel,
     callAttempts: reminder.callAttempts,
     isNewService: reminder.isNewService,

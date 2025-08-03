@@ -2,7 +2,7 @@
 import connectDB from "../../lib/mongodb";
 import mongoose from "mongoose";
 
-// Define schemas
+// Define schemas (UPDATED PropertySchema and added ReminderSchema)
 const DailyBookSchema = new mongoose.Schema(
   {
     date: String,
@@ -49,15 +49,72 @@ const AttendanceSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// UPDATED PropertySchema to match pages/api/properties.js
 const PropertySchema = new mongoose.Schema(
   {
-    name: String,
-    keyPerson: String,
-    contact: String,
-    location: String,
-    serviceType: String,
-    amount: Number,
-    lastService: String,
+    name: { type: String, required: true },
+    keyPerson: { type: String, required: true },
+    contact: { type: String, required: true },
+    location: { type: String, required: true },
+    area: { type: String, required: false },
+    serviceType: { type: String, required: true },
+    amount: { type: Number, required: true },
+    isOnHold: { type: Boolean, default: false },
+    serviceDate: { type: Date, required: false, default: null },
+    serviceDetails: {
+      ohTank: String,
+      ugTank: String,
+      sintexTank: String,
+      numberOfFloors: Number,
+      wing: String,
+      treatment: String,
+      apartment: String,
+      workDescription: String,
+    },
+  },
+  { timestamps: true }
+);
+
+// ADDED ReminderSchema
+const ReminderSchema = new mongoose.Schema(
+  {
+    propertyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Property",
+      required: true,
+    },
+    propertyName: { type: String, required: true },
+    keyPerson: { type: String, required: true },
+    contact: { type: String, required: true },
+    location: { type: String, required: true },
+    serviceType: { type: String, required: true },
+    lastServiceDate: { type: Date, default: null },
+    scheduledDate: { type: Date, required: false, default: null },
+    nextReminderTime: { type: Date, required: false, default: null },
+    status: {
+      type: String,
+      enum: ["pending", "called", "scheduled", "completed", "on_hold"],
+      default: "scheduled",
+    },
+    called: { type: Boolean, default: false },
+    scheduled: { type: Boolean, default: true },
+    completed: { type: Boolean, default: false },
+    isNewService: { type: Boolean, default: true },
+    callAttempts: { type: Number, default: 0 },
+    lastCallAttempt: { type: Date },
+    escalationLevel: { type: Number, default: 0 },
+    notes: { type: String },
+    customReminderHours: { type: Number, default: 0 },
+    notificationSent: { type: Boolean, default: false },
+    notificationHistory: [
+      {
+        sentAt: { type: Date },
+        type: { type: String },
+        message: { type: String },
+      },
+    ],
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );
@@ -72,7 +129,7 @@ const ServiceSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Create models
+// Create models (ensure models are not re-created if already defined)
 const DailyBook =
   mongoose.models.DailyBook ||
   mongoose.model("DailyBook", DailyBookSchema, "dailybooks");
@@ -85,9 +142,14 @@ const Laborer =
 const Attendance =
   mongoose.models.Attendance ||
   mongoose.model("Attendance", AttendanceSchema, "attendance");
-const Property =
-  mongoose.models.Property ||
-  mongoose.model("Property", PropertySchema, "properties");
+
+// Force recreation for Property and Reminder to ensure latest schema is used
+delete mongoose.models.Property;
+delete mongoose.models.Reminder;
+
+const Property = mongoose.model("Property", PropertySchema, "properties");
+const Reminder = mongoose.model("Reminder", ReminderSchema); // Use the new Reminder model
+
 const Service =
   mongoose.models.Service ||
   mongoose.model("Service", ServiceSchema, "services");
@@ -133,47 +195,114 @@ export default async function handler(req, res) {
 async function generateClientReport() {
   try {
     const properties = await Property.find({}).lean();
-    const dailyBooks = await DailyBook.find({}).lean();
+    const dailyBooks = await DailyBook.find({}).lean(); // Still useful for total amount calculation
 
-    return properties.map((property) => {
-      // Find related daily book entries
+    const clientReportData = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (const property of properties) {
+      // Find the latest relevant reminder for this property
+      // Prioritize non-completed reminders, then the most recently completed one
+      const latestReminder = await Reminder.findOne({
+        propertyId: property._id,
+        // Find non-completed first, or the most recent completed one
+        $or: [
+          { completed: false },
+          {
+            completed: true,
+            updatedAt: {
+              $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+            },
+          }, // Completed within last 30 days
+        ],
+      })
+        .sort({ completed: 1, scheduledDate: -1, updatedAt: -1 })
+        .lean(); // Non-completed first, then latest scheduled/updated
+
+      let lastServiceDisplay = "N/A";
+      let nextReminderDisplay = "N/A";
+      let statusDisplay = "Unknown";
+
+      if (latestReminder) {
+        // Determine Last Service
+        if (latestReminder.lastServiceDate) {
+          lastServiceDisplay = new Date(
+            latestReminder.lastServiceDate
+          ).toLocaleDateString("en-GB");
+        } else if (latestReminder.isNewService) {
+          lastServiceDisplay = "New Service";
+        }
+
+        // Determine Next Reminder and Status based on Reminder data
+        if (latestReminder.completed) {
+          nextReminderDisplay = "Completed";
+          statusDisplay = "Completed";
+        } else if (latestReminder.status === "on_hold") {
+          nextReminderDisplay = "On Hold";
+          statusDisplay = "On Hold";
+        } else if (latestReminder.scheduledDate) {
+          const scheduledDateObj = new Date(latestReminder.scheduledDate);
+          scheduledDateObj.setHours(0, 0, 0, 0);
+
+          nextReminderDisplay = scheduledDateObj.toLocaleDateString("en-GB");
+
+          if (scheduledDateObj < today) {
+            statusDisplay = "Overdue";
+          } else if (scheduledDateObj.toDateString() === today.toDateString()) {
+            statusDisplay = "Due Today";
+          } else {
+            statusDisplay = "Scheduled";
+          }
+        } else {
+          statusDisplay = "Pending"; // No scheduled date, not on hold, not completed
+        }
+      } else {
+        // Fallback if no reminder exists for the property
+        // This might happen for older properties or if reminder generation failed
+        lastServiceDisplay = property.serviceDate
+          ? new Date(property.serviceDate).toLocaleDateString("en-GB")
+          : "N/A";
+        nextReminderDisplay = property.isOnHold
+          ? "On Hold"
+          : property.serviceDate
+          ? new Date(property.serviceDate).toLocaleDateString("en-GB")
+          : "N/A";
+        statusDisplay = property.isOnHold ? "On Hold" : "Active (No Reminder)";
+      }
+
+      // Calculate total amount from daily book entries (still relevant)
       const relatedEntries = dailyBooks.filter(
         (entry) =>
           entry.property === property.name ||
           entry.keyPerson === property.keyPerson
       );
-
-      // Calculate total amount from daily book entries
       const totalAmount = relatedEntries.reduce(
         (sum, entry) => sum + (entry.amount || 0),
         0
       );
 
-      // Calculate next reminder (30 days from last service)
-      const lastServiceDate = new Date(property.lastService);
-      const nextReminder = new Date(lastServiceDate);
-      nextReminder.setDate(nextReminder.getDate() + 30);
-
-      return {
+      clientReportData.push({
         propertyName: property.name,
         clientName: property.keyPerson,
         contact: property.contact,
         location: property.location,
         serviceType: property.serviceType,
-        lastService: property.lastService,
-        nextReminder: isNaN(nextReminder.getTime())
-          ? ""
-          : nextReminder.toISOString().split("T")[0],
-        amount: totalAmount || property.amount,
-        status: isOverdue(property.lastService) ? "Overdue" : "Active",
-      };
-    });
+        lastService: lastServiceDisplay,
+        nextReminder: nextReminderDisplay,
+        amount: totalAmount || property.amount, // Use total from daily books if available, else property's default amount
+        status: statusDisplay,
+      });
+    }
+
+    return clientReportData;
   } catch (error) {
     console.error("Client Report Error:", error);
     return [];
   }
 }
 
+// Keep other report generation functions as they are
 async function generateServiceReport() {
   try {
     const services = await Service.find({}).lean();
@@ -222,8 +351,8 @@ async function generateServiceReport() {
 
 async function generateFinancialReport() {
   try {
-    const dailyBooks = await DailyBook.find({}).lean();
     const expenses = await Expense.find({}).lean();
+    const laborers = await Laborer.find({ status: "Active" }).lean();
 
     const now = new Date();
     const currentYear = now.getFullYear();
@@ -232,28 +361,7 @@ async function generateFinancialReport() {
     // Group data by month
     const monthlyData = {};
 
-    // Process revenue
-    dailyBooks.forEach((entry) => {
-      const date = new Date(entry.date);
-      const monthKey = `${date.getFullYear()}-${String(
-        date.getMonth() + 1
-      ).padStart(2, "0")}`;
-
-      if (!monthlyData[monthKey]) {
-        monthlyData[monthKey] = {
-          month: monthKey,
-          revenue: 0,
-          expenses: 0,
-          profit: 0,
-          transactions: 0,
-        };
-      }
-
-      monthlyData[monthKey].revenue += entry.amount || 0;
-      monthlyData[monthKey].transactions++;
-    });
-
-    // Process expenses
+    // Process regular expenses
     expenses.forEach((expense) => {
       const date = new Date(expense.date);
       const monthKey = `${date.getFullYear()}-${String(
@@ -265,18 +373,148 @@ async function generateFinancialReport() {
           month: monthKey,
           revenue: 0,
           expenses: 0,
+          laborExpenses: 0,
+          variableLaborExpenses: 0,
           profit: 0,
-          transactions: 0,
+          transactions: 1,
+          expenseBreakdown: {},
+          topExpenses: [],
+          expenseCategories: {},
+          profitMargin: 0,
         };
+      } else {
+        monthlyData[monthKey].transactions++;
       }
 
       monthlyData[monthKey].expenses += expense.amount || 0;
+
+      const expenseType = expense.type || "Other";
+      if (expenseType.toLowerCase() === "labor") {
+        monthlyData[monthKey].variableLaborExpenses += expense.amount || 0;
+        monthlyData[monthKey].expenseBreakdown["Variable Labor"] =
+          (monthlyData[monthKey].expenseBreakdown["Variable Labor"] || 0) +
+          (expense.amount || 0);
+      } else {
+        monthlyData[monthKey].expenseBreakdown[expenseType] =
+          (monthlyData[monthKey].expenseBreakdown[expenseType] || 0) +
+          (expense.amount || 0);
+      }
+
+      let categoryType = expenseType;
+      if (expenseType.toLowerCase() === "labor") {
+        categoryType = "Labor Variable";
+      } else if (
+        expenseType.toLowerCase() === "transportation" ||
+        expenseType === "Transportation"
+      ) {
+        categoryType = "Transportation";
+      } else if (
+        expenseType.toLowerCase() === "miscellaneous" ||
+        expenseType === "Miscellaneous"
+      ) {
+        categoryType = "Miscellaneous";
+      } else {
+        // Map any other expense types to Miscellaneous
+        categoryType = "Miscellaneous";
+      }
+
+      monthlyData[monthKey].topExpenses.push({
+        type: expenseType === "Labor" ? "Labor Variable" : expenseType,
+        amount: expense.amount || 0,
+        description: expense.description || "",
+        date: expense.date,
+      });
     });
 
-    // Calculate profit for each month
+    // Calculate labor expenses for each month
+    for (const monthKey of Object.keys(monthlyData)) {
+      const [year, month] = monthKey.split("-");
+      const monthStart = `${year}-${month}-01`;
+      const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+      const monthEnd = `${year}-${month}-${String(lastDay).padStart(2, "0")}`;
+
+      let monthLaborExpenses = 0;
+      let monthAttendance = [];
+      let laborerMap = new Map();
+
+      const laborerIds = laborers.map((l) => l._id);
+
+      if (laborerIds.length > 0) {
+        monthAttendance = await Attendance.find({
+          laborerId: { $in: laborerIds },
+          date: { $gte: monthStart, $lte: monthEnd },
+          status: "present",
+        }).lean();
+
+        laborerMap = new Map(laborers.map((l) => [l._id.toString(), l]));
+
+        monthAttendance.forEach((record) => {
+          const laborer = laborerMap.get(record.laborerId.toString());
+          if (laborer && laborer.monthlyPay) {
+            monthLaborExpenses += laborer.monthlyPay / lastDay;
+          }
+        });
+      }
+
+      monthlyData[monthKey].laborExpenses = monthLaborExpenses;
+      monthlyData[monthKey].expenseBreakdown["Salary Expenses"] =
+        monthLaborExpenses;
+
+      // Group salary by laborer for better breakdown
+      if (monthLaborExpenses > 0) {
+        const salaryBreakdown = {};
+
+        monthAttendance.forEach((record) => {
+          const laborer = laborerMap.get(record.laborerId.toString());
+          if (laborer && laborer.monthlyPay) {
+            if (!salaryBreakdown[laborer.name]) {
+              salaryBreakdown[laborer.name] = 0;
+            }
+            salaryBreakdown[laborer.name] += laborer.monthlyPay / lastDay;
+          }
+        });
+
+        Object.entries(salaryBreakdown).forEach(([laborerName, amount]) => {
+          monthlyData[monthKey].topExpenses.push({
+            type: "Labor Salary",
+            amount,
+            description: `Monthly salary for ${laborerName}`,
+            date: `${monthKey}-01`,
+          });
+        });
+      }
+    }
+
+    // Final calculations for each month
     Object.keys(monthlyData).forEach((month) => {
-      monthlyData[month].profit =
-        monthlyData[month].revenue - monthlyData[month].expenses;
+      const data = monthlyData[month];
+      const totalExpenses = data.expenses + data.laborExpenses;
+      data.profit = -totalExpenses;
+      data.profitMargin = -100;
+
+      data.topExpenses = data.topExpenses.sort((a, b) => b.amount - a.amount);
+
+      const expenseTotal = Object.values(data.expenseBreakdown).reduce(
+        (sum, amount) => sum + amount,
+        0
+      );
+
+      data.expenseCategories = Object.entries(data.expenseBreakdown)
+        .map(([category, amount]) => ({
+          category,
+          amount,
+          percentage: expenseTotal > 0 ? (amount / expenseTotal) * 100 : 0,
+        }))
+        .sort((a, b) => b.amount - a.amount);
+
+      data.laborBreakdown = {
+        salaryExpenses: data.laborExpenses || 0,
+        variableExpenses: data.variableLaborExpenses || 0,
+        totalLabor:
+          (data.laborExpenses || 0) + (data.variableLaborExpenses || 0),
+      };
+
+      data.expenses = totalExpenses;
     });
 
     // Convert to array and sort by date
@@ -356,6 +594,7 @@ async function generateLaborReport() {
   }
 }
 
+// This function is no longer directly used in generateClientReport but kept for reference if needed elsewhere
 function isOverdue(lastServiceDate) {
   if (!lastServiceDate) return false;
 

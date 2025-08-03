@@ -1,32 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Line, Doughnut } from "react-chartjs-2";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement,
-} from "chart.js";
+import { useState, useEffect, useCallback } from "react";
 import styles from "./Dashboard.module.css";
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement
-);
+import { useRouter } from "next/router";
 
 const Dashboard = () => {
+  const router = useRouter();
   const [stats, setStats] = useState({
     monthlyRevenue: 0,
     netProfit: 0,
@@ -46,15 +25,12 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    fetchAllData();
-  }, []);
+  // ✅ clean dependency
 
-  const fetchAllData = async () => {
+  const fetchAllData = useCallback(async () => {
     try {
       setLoading(true);
 
-      // Fetch data from all endpoints INCLUDING reminders
       const [
         propertiesRes,
         servicesRes,
@@ -71,7 +47,6 @@ const Dashboard = () => {
         fetch("/api/reminders"),
       ]);
 
-      // Check if all responses are OK
       if (!propertiesRes.ok)
         throw new Error(`Properties API failed: ${propertiesRes.status}`);
       if (!servicesRes.ok)
@@ -85,7 +60,6 @@ const Dashboard = () => {
       if (!remindersRes.ok)
         throw new Error(`Reminders API failed: ${remindersRes.status}`);
 
-      // Parse all responses
       const propertiesData = await propertiesRes.json();
       const servicesData = await servicesRes.json();
       const dailyBookData = await dailyBookRes.json();
@@ -93,7 +67,6 @@ const Dashboard = () => {
       const laborersData = await laborersRes.json();
       const remindersData = await remindersRes.json();
 
-      // Extract arrays from response objects with detailed logging
       const properties = Array.isArray(propertiesData)
         ? propertiesData
         : propertiesData.properties || [];
@@ -102,7 +75,6 @@ const Dashboard = () => {
         ? servicesData
         : servicesData.services || [];
 
-      // FIXED: Use 'entries' instead of 'dailybooks'
       const dailyBook = Array.isArray(dailyBookData)
         ? dailyBookData
         : dailyBookData.entries || [];
@@ -115,10 +87,8 @@ const Dashboard = () => {
         ? laborersData
         : laborersData.laborers || [];
 
-      // FIXED: Pass the entire reminders object instead of just the empty reminders array
       const reminders = remindersData;
 
-      // Calculate statistics with reminders included
       const calculatedStats = calculateStats(
         properties,
         services,
@@ -128,7 +98,6 @@ const Dashboard = () => {
         reminders
       );
 
-      // Generate chart data
       const monthlyChartData = getMonthlyData(dailyBook);
 
       setStats(calculatedStats);
@@ -139,7 +108,10 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]); // If setStats, setChartData, setLoading, etc. are defined via useState, it's safe to omit them
 
   const calculateStats = (
     properties,
@@ -198,19 +170,6 @@ const Dashboard = () => {
       ...(reminders?.completedReminders || []),
     ];
 
-    // // Water Tank Cleaning count
-    // const waterTankCleaningFromDailyBook = dailyBook.filter(
-    //   (entry) =>
-    //     entry.service &&
-    //     entry.service.toLowerCase().includes("water tank cleaning")
-    // ).length;
-
-    // const waterTankCleaningFromReminders = allReminders.filter(
-    //   (reminder) =>
-    //     reminder.serviceType &&
-    //     reminder.serviceType.toLowerCase().includes("water tank cleaning")
-    // ).length;
-
     const waterTankCleaningAmount = dailyBook.reduce((sum, entry) => {
       if (
         entry.service &&
@@ -224,18 +183,6 @@ const Dashboard = () => {
       "en-IN"
     )}`;
 
-    // // Pest Control count
-    // const pestControlFromDailyBook = dailyBook.filter(
-    //   (entry) =>
-    //     entry.service && entry.service.toLowerCase().includes("pest control")
-    // ).length;
-
-    // const pestControlFromReminders = allReminders.filter(
-    //   (reminder) =>
-    //     reminder.serviceType &&
-    //     reminder.serviceType.toLowerCase().includes("pest control")
-    // ).length;
-
     const pestControlAmount = dailyBook.reduce((sum, entry) => {
       if (
         entry.service &&
@@ -246,16 +193,6 @@ const Dashboard = () => {
       return sum;
     }, 0);
     const pestControl = `₹${pestControlAmount.toLocaleString("en-IN")}`;
-    // // Motor Repairing count (checking all variations)
-    // const motorRepairingFromDailyBook = dailyBook.filter(
-    //   (entry) => entry.service && entry.service.toLowerCase().includes("motor")
-    // ).length;
-
-    // const motorRepairingFromReminders = allReminders.filter(
-    //   (reminder) =>
-    //     reminder.serviceType &&
-    //     reminder.serviceType.toLowerCase().includes("motor")
-    // ).length;
 
     const motorRepairingAmount = dailyBook.reduce((sum, entry) => {
       if (entry.service && entry.service.toLowerCase().includes("motor")) {
@@ -270,15 +207,7 @@ const Dashboard = () => {
       (laborer) => laborer.status === "Active"
     ).length;
 
-    // Calculate upcoming reminders (properties that haven't been serviced in 30+ days)
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const upcomingReminders = properties.filter((property) => {
-      const lastServiceDate = new Date(property.lastService);
-      return lastServiceDate < thirtyDaysAgo;
-    }).length;
-
+    const upcomingReminders = reminders?.stats?.totalReminders || 0;
     return {
       monthlyRevenue,
       netProfit,
@@ -326,8 +255,14 @@ const Dashboard = () => {
     return { months, revenues };
   };
 
-  const StatCard = ({ title, value, subtitle, gradient, icon, trend }) => (
-    <div className={`${styles.statCard} ${styles[gradient]}`}>
+  const StatCard = ({ title, value, subtitle, gradient, icon, onClick }) => (
+    <div
+      className={`${styles.statCard} ${styles[gradient]} ${
+        onClick ? styles.clickable : ""
+      }`}
+      onClick={onClick}
+    >
+      {" "}
       <div className={styles.statCardContent}>
         <div className={styles.statHeader}>
           <div className={styles.statIcon}>
@@ -348,57 +283,6 @@ const Dashboard = () => {
       </div>
     </div>
   );
-
-  // const revenueChartData = {
-  //   labels: chartData.months,
-  //   datasets: [
-  //     {
-  //       label: "Revenue",
-  //       data: chartData.revenues,
-  //       borderColor: "rgb(99, 102, 241)",
-  //       backgroundColor: "rgba(99, 102, 241, 0.1)",
-  //       tension: 0.4,
-  //       fill: true,
-  //     },
-  //   ],
-  // };
-
-  // const serviceDistributionData = {
-  //   labels: ["Water Tank Cleaning", "Pest Control", "Motor Repairing"],
-  //   datasets: [
-  //     {
-  //       data: [
-  //         stats.waterTankCleaning,
-  //         stats.pestControl,
-  //         stats.motorRepairing,
-  //       ],
-  //       backgroundColor: [
-  //         "rgba(99, 102, 241, 0.8)",
-  //         "rgba(16, 185, 129, 0.8)",
-  //         "rgba(245, 101, 101, 0.8)",
-  //       ],
-  //       borderWidth: 0,
-  //     },
-  //   ],
-  // };
-
-  // const chartOptions = {
-  //   responsive: true,
-  //   maintainAspectRatio: false,
-  //   plugins: {
-  //     legend: {
-  //       display: false,
-  //     },
-  //   },
-  //   scales: {
-  //     y: {
-  //       display: false,
-  //     },
-  //     x: {
-  //       display: false,
-  //     },
-  //   },
-  // };
 
   if (loading) {
     return (
@@ -461,7 +345,7 @@ const Dashboard = () => {
           subtitle="Properties due for service"
           gradient="mediumGrayCard"
           icon="⏰"
-          // trend={-2.3}
+          onClick={() => router.push("/reminders")}
         />
       </div>
 

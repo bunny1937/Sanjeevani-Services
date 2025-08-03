@@ -168,6 +168,46 @@
   font-size: 1.5rem;
   cursor: pointer;
 }
+/* Add to Expenses.module.css */
+
+.laborExpenseCard {
+  background-color: #e0f7fa; /* Light blue */
+  border: 1px solid #b2ebf2;
+  color: #00796b;
+}
+
+.laborExpenseCard .statIcon {
+  font-size: 2.5rem;
+}
+
+.laborDetailList {
+  margin-top: 1rem;
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.laborDetailItem {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px dashed #eee;
+}
+
+.laborDetailItem:last-child {
+  border-bottom: none;
+}
+
+.laborDetailTotal {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  font-weight: bold;
+  border-top: 2px solid #ccc;
+  margin-top: 10px;
+}
 
 /* Date input */
 .dateInput {

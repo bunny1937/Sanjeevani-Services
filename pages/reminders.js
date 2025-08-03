@@ -21,7 +21,7 @@ const Reminders = () => {
     scheduled: 0,
     completed: 0,
     critical: 0,
-    failed_contact: 0,
+    on_hold: 0,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -79,7 +79,6 @@ const Reminders = () => {
           scheduled: 0,
           completed: 0,
           critical: 0,
-          failed_contact: 0,
         });
       }
     } catch (error) {
@@ -335,7 +334,6 @@ const Reminders = () => {
     if (reminder.isDueToday) return styles.statusDueToday;
     if (reminder.status === "scheduled") return styles.statusScheduled;
     if (reminder.status === "called") return styles.statusCalled;
-    if (reminder.status === "failed_contact") return styles.statusFailedContact;
     return styles.statusPending;
   };
 
@@ -347,7 +345,6 @@ const Reminders = () => {
     if (reminder.isDueToday) return "Due Today";
     if (reminder.status === "scheduled") return "Scheduled";
     if (reminder.status === "called") return "Called";
-    if (reminder.status === "failed_contact") return "Failed Contact";
     return "Pending";
   };
 
@@ -810,6 +807,32 @@ const Reminders = () => {
                 </div>
               </form>
             )}
+            {modalType === "schedule_date" && (
+              <form onSubmit={handleScheduleDate}>
+                <div className={styles.formGroup}>
+                  <label htmlFor="scheduledDate">Schedule Date:</label>
+                  <input
+                    type="date"
+                    id="scheduledDate"
+                    name="scheduledDate"
+                    required
+                    min={new Date().toISOString().split("T")[0]}
+                  />
+                </div>
+                <div className={styles.modalActions}>
+                  <button type="submit" className={styles.submitButton}>
+                    Set Date
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(false)}
+                    className={styles.cancelButton}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       </div>
@@ -918,6 +941,18 @@ const Reminders = () => {
               <div className={styles.statIcon}>⏰</div>
             </div>
           </div>
+          <div className={`${styles.statCard} ${styles.onHoldCard}`}>
+            <div className={styles.statContent}>
+              <div className={styles.statInfo}>
+                <h3>{stats.on_hold}</h3>
+                <p className={styles.statTitle}>On Hold</p>
+                <p className={styles.statDescription}>
+                  Reminders currently on hold
+                </p>
+              </div>
+              <div className={styles.statIcon}>⏸️</div>
+            </div>
+          </div>
           <div className={`${styles.statCard} ${styles.completedCard}`}>
             <div className={styles.statContent}>
               <div className={styles.statInfo}>
@@ -926,16 +961,6 @@ const Reminders = () => {
                 <p className={styles.statDescription}>Recently completed</p>
               </div>
               <div className={styles.statIcon}>🎉</div>
-            </div>
-          </div>
-          <div className={`${styles.statCard} ${styles.failedCard}`}>
-            <div className={styles.statContent}>
-              <div className={styles.statInfo}>
-                <h3>{stats.failed_contact}</h3>
-                <p className={styles.statTitle}>Failed Contact</p>
-                <p className={styles.statDescription}>Unable to reach</p>
-              </div>
-              <div className={styles.statIcon}>📞</div>
             </div>
           </div>
         </div>

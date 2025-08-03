@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import styles from "./Reports.module.css";
 
 const Reports = () => {
@@ -10,11 +10,7 @@ const Reports = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
 
-  useEffect(() => {
-    fetchReportData();
-  }, [selectedReport]);
-
-  const fetchReportData = async () => {
+  const fetchReportData = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch(`/api/reports?type=${selectedReport}`);
@@ -25,22 +21,34 @@ const Reports = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedReport]);
+  useEffect(() => {
+    fetchReportData();
+  }, [fetchReportData]);
 
   const handleExportCSV = () => {
     if (reportData.length === 0) {
       alert("No data to export");
       return;
     }
-    const headers = getTableHeaders();
-    const csvContent = [
-      headers.join(","),
-      ...reportData.map((item) =>
-        getRowData(item)
-          .map((cell) => `"${cell}"`)
-          .join(",")
-      ),
-    ].join("\n");
+
+    let csvContent = "";
+
+    if (selectedReport === "Financial Report") {
+      // For Financial Report, include detailed breakdown
+      csvContent = generateFinancialCSV();
+    } else {
+      // For other reports, use existing logic
+      const headers = getTableHeaders();
+      csvContent = [
+        headers.join(","),
+        ...reportData.map((item) =>
+          getRowData(item)
+            .map((cell) => `"${cell}"`)
+            .join(",")
+        ),
+      ].join("\n");
+    }
 
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
@@ -51,6 +59,94 @@ const Reports = () => {
     }.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
+  };
+
+  const generateFinancialCSV = () => {
+    let csvRows = [];
+
+    // Main financial summary headers
+    csvRows.push(
+      [
+        "Month",
+        "Revenue",
+        "Expenses",
+        "Labor Expenses",
+        "Profit",
+        "Profit Margin",
+        "Top Category",
+        "Transactions",
+      ].join(",")
+    );
+
+    // Main financial data
+    reportData.forEach((item) => {
+      const regularExpenses = (item.expenses || 0) - (item.laborExpenses || 0);
+      const topCategory =
+        item.expenseCategories && item.expenseCategories.length > 0
+          ? item.expenseCategories[0].category
+          : "N/A";
+
+      csvRows.push(
+        [
+          `"${item.month}"`,
+          `"${item.revenue || 0}"`,
+          `"${regularExpenses}"`,
+          `"${item.laborExpenses || 0}"`,
+          `"${item.profit || 0}"`,
+          `"${(item.profitMargin || 0).toFixed(1)}%"`,
+          `"${topCategory}"`,
+          `"${item.transactions || 0}"`,
+        ].join(",")
+      );
+    });
+
+    // Add spacing
+    csvRows.push("");
+    csvRows.push("DETAILED TRANSACTIONS BY MONTH");
+    csvRows.push("");
+
+    // For each month, add detailed transactions
+    reportData.forEach((item) => {
+      csvRows.push(`MONTH: ${item.month}`);
+      csvRows.push("");
+
+      // Expense Categories Summary
+      csvRows.push("EXPENSE CATEGORIES SUMMARY");
+      csvRows.push("Category,Amount,Percentage");
+      if (item.expenseCategories) {
+        item.expenseCategories.forEach((cat) => {
+          csvRows.push(
+            `"${cat.category}","${Math.round(cat.amount)}","${
+              Math.round(cat.percentage * 10) / 10
+            }%"`
+          );
+        });
+      }
+      csvRows.push("");
+
+      // Individual Transactions
+      csvRows.push("ALL INDIVIDUAL TRANSACTIONS");
+      csvRows.push("Type,Description,Amount,Date");
+
+      if (item.topExpenses) {
+        item.topExpenses.forEach((expense) => {
+          csvRows.push(
+            [
+              `"${expense.type}"`,
+              `"${expense.description || ""}"`,
+              `"${Math.round(expense.amount)}"`,
+              `"${expense.date}"`,
+            ].join(",")
+          );
+        });
+      }
+
+      csvRows.push("");
+      csvRows.push("---");
+      csvRows.push("");
+    });
+
+    return csvRows.join("\n");
   };
 
   const handleViewDetails = (item) => {
@@ -83,7 +179,16 @@ const Reports = () => {
           "Average Amount",
         ];
       case "Financial Report":
-        return ["Month", "Revenue", "Expenses", "Profit", "Transactions"];
+        return [
+          "Month",
+          "Revenue",
+          "Expenses",
+          "Labor Expenses",
+          "Profit",
+          "Profit Margin",
+          "Top Expense Category",
+          "Transactions",
+        ];
       case "Labor Report":
         return [
           "Name",
@@ -126,11 +231,18 @@ const Reports = () => {
           item.averageAmount || 0,
         ];
       case "Financial Report":
+        const topCategory =
+          item.expenseCategories && item.expenseCategories.length > 0
+            ? item.expenseCategories[0].category
+            : "N/A";
         return [
           item.month || "",
           item.revenue || 0,
-          item.expenses || 0,
+          (item.expenses || 0) - (item.laborExpenses || 0),
+          item.laborExpenses || 0,
           item.profit || 0,
+          `${(item.profitMargin || 0).toFixed(1)}%`,
+          topCategory,
           item.transactions || 0,
         ];
       case "Labor Report":
@@ -290,7 +402,10 @@ const Reports = () => {
           <th>Month</th>
           <th>Revenue</th>
           <th>Expenses</th>
+          <th>Labor Expenses</th>
           <th>Profit</th>
+          <th>Profit Margin</th>
+          <th>Top Category</th>
           <th>Transactions</th>
           <th>Actions</th>
         </tr>
@@ -298,39 +413,61 @@ const Reports = () => {
       <tbody>
         {reportData.length === 0 ? (
           <tr>
-            <td colSpan="6" className={styles.noData}>
+            <td colSpan="9" className={styles.noData}>
               No financial data available. Add some transactions to generate
               reports.
             </td>
           </tr>
         ) : (
-          reportData.map((item, index) => (
-            <tr key={index}>
-              <td>{item.month}</td>
-              <td className={styles.amountCell}>
-                ₹{item.revenue?.toLocaleString()}
-              </td>
-              <td className={styles.amountCell}>
-                ₹{item.expenses?.toLocaleString()}
-              </td>
-              <td
-                className={`${styles.amountCell} ${
-                  item.profit >= 0 ? styles.profit : styles.loss
-                }`}
-              >
-                ₹{item.profit?.toLocaleString()}
-              </td>
-              <td>{item.transactions}</td>
-              <td>
-                <button
-                  className={styles.viewBtn}
-                  onClick={() => handleViewDetails(item)}
+          reportData.map((item, index) => {
+            const regularExpenses =
+              (item.expenses || 0) - (item.laborExpenses || 0);
+            const topCategory =
+              item.expenseCategories && item.expenseCategories.length > 0
+                ? item.expenseCategories[0].category
+                : "N/A";
+
+            return (
+              <tr key={index}>
+                <td>{item.month}</td>
+                <td className={styles.amountCell}>
+                  ₹{item.revenue?.toLocaleString()}
+                </td>
+                <td className={styles.amountCell}>
+                  ₹{regularExpenses?.toLocaleString()}
+                </td>
+                <td className={styles.amountCell}>
+                  ₹{item.laborExpenses?.toLocaleString()}
+                </td>
+                <td
+                  className={`${styles.amountCell} ${
+                    item.profit >= 0 ? styles.profit : styles.loss
+                  }`}
                 >
-                  View
-                </button>
-              </td>
-            </tr>
-          ))
+                  ₹{item.profit?.toLocaleString()}
+                </td>
+                <td
+                  className={`${
+                    item.profitMargin >= 0 ? styles.profit : styles.loss
+                  }`}
+                >
+                  {(item.profitMargin || 0).toFixed(1)}%
+                </td>
+                <td>
+                  <span className={styles.serviceTag}>{topCategory}</span>
+                </td>
+                <td>{item.transactions}</td>
+                <td>
+                  <button
+                    className={styles.viewBtn}
+                    onClick={() => handleViewDetails(item)}
+                  >
+                    View
+                  </button>
+                </td>
+              </tr>
+            );
+          })
         )}
       </tbody>
     </table>
@@ -512,33 +649,379 @@ const Reports = () => {
               </div>
             )}
             {selectedReport === "Financial Report" && (
-              <div className={styles.detailsGrid}>
-                <div className={styles.detailItem}>
-                  <label>Month:</label>
-                  <span>{selectedItem.month}</span>
+              <div className={styles.financialDetailsContainer}>
+                <div className={styles.financialHeader}>
+                  <h4>📊 Financial Summary for {selectedItem.month}</h4>
+                  <div className={styles.transactionBadge}>
+                    {selectedItem.transactions} Transactions
+                  </div>
                 </div>
-                <div className={styles.detailItem}>
-                  <label>Revenue:</label>
-                  <span>₹{selectedItem.revenue?.toLocaleString()}</span>
+
+                <div className={styles.financialMetrics}>
+                  <div className={styles.metricCard}>
+                    <div className={styles.metricIcon}>💰</div>
+                    <div className={styles.metricContent}>
+                      <span className={styles.metricLabel}>Total Expenses</span>
+                      <span className={styles.metricValue}>
+                        ₹{selectedItem.expenses?.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className={styles.metricCard}>
+                    <div className={styles.metricIcon}>👷</div>
+                    <div className={styles.metricContent}>
+                      <span className={styles.metricLabel}>Labor Expenses</span>
+                      <span className={styles.metricValue}>
+                        ₹{selectedItem.laborExpenses?.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className={styles.metricCard}>
+                    <div className={styles.metricIcon}>📈</div>
+                    <div className={styles.metricContent}>
+                      <span className={styles.metricLabel}>
+                        Regular Expenses
+                      </span>
+                      <span className={styles.metricValue}>
+                        ₹
+                        {(
+                          (selectedItem.expenses || 0) -
+                          (selectedItem.laborExpenses || 0)
+                        )?.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className={`${styles.metricCard} ${styles.lossCard}`}>
+                    <div className={styles.metricIcon}>📉</div>
+                    <div className={styles.metricContent}>
+                      <span className={styles.metricLabel}>Net Loss</span>
+                      <span className={`${styles.metricValue} ${styles.loss}`}>
+                        ₹{Math.abs(selectedItem.profit || 0)?.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div className={styles.detailItem}>
-                  <label>Expenses:</label>
-                  <span>₹{selectedItem.expenses?.toLocaleString()}</span>
-                </div>
-                <div className={styles.detailItem}>
-                  <label>Profit:</label>
-                  <span
-                    className={
-                      selectedItem.profit >= 0 ? styles.profit : styles.loss
-                    }
-                  >
-                    ₹{selectedItem.profit?.toLocaleString()}
-                  </span>
-                </div>
-                <div className={styles.detailItem}>
-                  <label>Transactions:</label>
-                  <span>{selectedItem.transactions}</span>
-                </div>
+
+                {/* Labor Expenses Breakdown */}
+                {selectedItem.laborBreakdown && (
+                  <div className={styles.laborBreakdownSection}>
+                    <h4>💼 Labor Expenses Breakdown</h4>
+                    <div className={styles.laborBreakdownGrid}>
+                      <div className={styles.laborBreakdownItem}>
+                        <div className={styles.laborIcon}>💰</div>
+                        <div className={styles.laborDetails}>
+                          <span className={styles.laborLabel}>
+                            Salary Expenses
+                          </span>
+                          <span className={styles.laborAmount}>
+                            ₹
+                            {selectedItem.laborBreakdown.salaryExpenses?.toLocaleString()}
+                          </span>
+                          <span className={styles.laborDescription}>
+                            Monthly payroll & fixed wages
+                          </span>
+                        </div>
+                      </div>
+                      <div className={styles.laborBreakdownItem}>
+                        <div className={styles.laborIcon}>🔧</div>
+                        <div className={styles.laborDetails}>
+                          <span className={styles.laborLabel}>
+                            Variable Labor
+                          </span>
+                          <span className={styles.laborAmount}>
+                            ₹
+                            {selectedItem.laborBreakdown.variableExpenses?.toLocaleString()}
+                          </span>
+                          <span className={styles.laborDescription}>
+                            Overtime, bonuses & misc
+                          </span>
+                        </div>
+                      </div>
+                      <div
+                        className={`${styles.laborBreakdownItem} ${styles.totalLabor}`}
+                      >
+                        <div className={styles.laborIcon}>📊</div>
+                        <div className={styles.laborDetails}>
+                          <span className={styles.laborLabel}>Total Labor</span>
+                          <span className={styles.laborAmount}>
+                            ₹
+                            {selectedItem.laborBreakdown.totalLabor?.toLocaleString()}
+                          </span>
+                          <span className={styles.laborDescription}>
+                            Combined labor costs
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Complete Expense Categories */}
+                {/* Complete Expense Categories */}
+                {selectedItem.expenseCategories &&
+                  selectedItem.expenseCategories.length > 0 && (
+                    <div className={styles.expenseBreakdown}>
+                      <h4>📈 Complete Expense Breakdown</h4>
+                      <div className={styles.expenseCategories}>
+                        {selectedItem.expenseCategories.map(
+                          (category, index) => (
+                            <div key={index} className={styles.categoryItem}>
+                              <div className={styles.categoryIcon}>
+                                {category.category === "Salary Expenses"
+                                  ? "💰"
+                                  : category.category === "Variable Labor"
+                                  ? "🔧"
+                                  : category.category === "Transportation"
+                                  ? "🚗"
+                                  : category.category === "Miscellaneous"
+                                  ? "📦"
+                                  : "💼"}
+                              </div>
+                              <div className={styles.categoryDetails}>
+                                <span className={styles.categoryName}>
+                                  {category.category}
+                                </span>
+                                <div className={styles.categoryAmountRow}>
+                                  <span className={styles.categoryAmount}>
+                                    ₹
+                                    {Math.round(
+                                      category.amount
+                                    )?.toLocaleString()}
+                                  </span>
+                                  <span className={styles.categoryPercentage}>
+                                    {Math.round(category.percentage * 10) / 10}%
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                {/* Individual Transactions by Category */}
+                {selectedItem.topExpenses &&
+                  selectedItem.topExpenses.length > 0 && (
+                    <div className={styles.transactionsSection}>
+                      <h4>💳 All Transactions</h4>
+
+                      {/* Labor Salary Transactions */}
+                      {selectedItem.topExpenses.filter(
+                        (exp) => exp.type === "Labor Salary"
+                      ).length > 0 && (
+                        <div className={styles.transactionCategory}>
+                          <div className={styles.categoryHeader}>
+                            <span className={styles.categoryIcon}>💰</span>
+                            <span className={styles.categoryTitle}>
+                              Labor Salary
+                            </span>
+                            <span className={styles.transactionCount}>
+                              {
+                                selectedItem.topExpenses.filter(
+                                  (exp) => exp.type === "Labor Salary"
+                                ).length
+                              }{" "}
+                              transactions
+                            </span>
+                          </div>
+                          <div className={styles.transactionsList}>
+                            {selectedItem.topExpenses
+                              .filter((exp) => exp.type === "Labor Salary")
+                              .map((expense, index) => (
+                                <div
+                                  key={`salary-${index}`}
+                                  className={styles.transactionItem}
+                                >
+                                  <div className={styles.transactionDetails}>
+                                    <span
+                                      className={styles.transactionDescription}
+                                    >
+                                      {expense.description}
+                                    </span>
+                                    <span className={styles.transactionDate}>
+                                      {expense.date}
+                                    </span>
+                                  </div>
+                                  <span className={styles.transactionAmount}>
+                                    ₹
+                                    {Math.round(
+                                      expense.amount
+                                    )?.toLocaleString()}
+                                  </span>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Labor Variable Transactions */}
+                      {selectedItem.topExpenses.filter(
+                        (exp) => exp.type === "Labor Variable"
+                      ).length > 0 && (
+                        <div className={styles.transactionCategory}>
+                          <div className={styles.categoryHeader}>
+                            <span className={styles.categoryIcon}>🔧</span>
+                            <span className={styles.categoryTitle}>
+                              Labor Variable
+                            </span>
+                            <span className={styles.transactionCount}>
+                              {
+                                selectedItem.topExpenses.filter(
+                                  (exp) => exp.type === "Labor Variable"
+                                ).length
+                              }{" "}
+                              transactions
+                            </span>
+                          </div>
+                          <div className={styles.transactionsList}>
+                            {selectedItem.topExpenses
+                              .filter((exp) => exp.type === "Labor Variable")
+                              .map((expense, index) => (
+                                <div
+                                  key={`variable-${index}`}
+                                  className={styles.transactionItem}
+                                >
+                                  <div className={styles.transactionDetails}>
+                                    <span
+                                      className={styles.transactionDescription}
+                                    >
+                                      {expense.description ||
+                                        "Variable labor expense"}
+                                    </span>
+                                    <span className={styles.transactionDate}>
+                                      {expense.date}
+                                    </span>
+                                  </div>
+                                  <span className={styles.transactionAmount}>
+                                    ₹
+                                    {Math.round(
+                                      expense.amount
+                                    )?.toLocaleString()}
+                                  </span>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Transportation Transactions */}
+                      {/* Transportation Transactions */}
+                      {selectedItem.topExpenses.filter(
+                        (exp) =>
+                          exp.type === "Transportation" ||
+                          exp.type === "transportation"
+                      ).length > 0 && (
+                        <div className={styles.transactionCategory}>
+                          <div className={styles.categoryHeader}>
+                            <span className={styles.categoryIcon}>🚗</span>
+                            <span className={styles.categoryTitle}>
+                              Transportation
+                            </span>
+                            <span className={styles.transactionCount}>
+                              {
+                                selectedItem.topExpenses.filter(
+                                  (exp) => exp.type === "Transportation"
+                                ).length
+                              }{" "}
+                              transactions
+                            </span>
+                          </div>
+                          <div className={styles.transactionsList}>
+                            {selectedItem.topExpenses
+                              .filter(
+                                (exp) =>
+                                  exp.type === "Transportation" ||
+                                  exp.type === "transportation"
+                              )
+                              .map((expense, index) => (
+                                <div
+                                  key={`transport-${index}`}
+                                  className={styles.transactionItem}
+                                >
+                                  <div className={styles.transactionDetails}>
+                                    <span
+                                      className={styles.transactionDescription}
+                                    >
+                                      {expense.description ||
+                                        "Transportation expense"}
+                                    </span>
+                                    <span className={styles.transactionDate}>
+                                      {expense.date}
+                                    </span>
+                                  </div>
+                                  <span className={styles.transactionAmount}>
+                                    ₹
+                                    {Math.round(
+                                      expense.amount
+                                    )?.toLocaleString()}
+                                  </span>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Miscellaneous Transactions */}
+                      {selectedItem.topExpenses.filter(
+                        (exp) =>
+                          exp.type === "Miscellaneous" ||
+                          exp.type === "miscellaneous"
+                      ).length > 0 && (
+                        <div className={styles.transactionCategory}>
+                          <div className={styles.categoryHeader}>
+                            <span className={styles.categoryIcon}>📦</span>
+                            <span className={styles.categoryTitle}>
+                              Miscellaneous
+                            </span>
+                            <span className={styles.transactionCount}>
+                              {
+                                selectedItem.topExpenses.filter(
+                                  (exp) => exp.type === "Miscellaneous"
+                                ).length
+                              }{" "}
+                              transactions
+                            </span>
+                          </div>
+                          <div className={styles.transactionsList}>
+                            {selectedItem.topExpenses
+                              .filter(
+                                (exp) =>
+                                  exp.type === "Miscellaneous" ||
+                                  exp.type === "miscellaneous"
+                              )
+                              .map((expense, index) => (
+                                <div
+                                  key={`misc-${index}`}
+                                  className={styles.transactionItem}
+                                >
+                                  <div className={styles.transactionDetails}>
+                                    <span
+                                      className={styles.transactionDescription}
+                                    >
+                                      {expense.description ||
+                                        "Miscellaneous expense"}
+                                    </span>
+                                    <span className={styles.transactionDate}>
+                                      {expense.date}
+                                    </span>
+                                  </div>
+                                  <span className={styles.transactionAmount}>
+                                    ₹
+                                    {Math.round(
+                                      expense.amount
+                                    )?.toLocaleString()}
+                                  </span>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
               </div>
             )}
             {selectedReport === "Labor Report" && (

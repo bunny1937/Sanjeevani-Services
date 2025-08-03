@@ -113,10 +113,13 @@
   border-color: #06b6d4;
 }
 
-.failedCard {
-  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-  color: white;
-  border-color: #f97316;
+.onHoldCard {
+  background-color: #f0f0f0; /* Light grey */
+  border: 1px solid #ccc;
+  color: #333;
+}
+.onHoldCard .statIcon {
+  color: #888;
 }
 
 .statContent {

@@ -279,7 +279,7 @@
 .modal {
   background: white;
   border-radius: 8px;
-  max-width: 600px;
+  max-width: 1200px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
@@ -388,6 +388,313 @@
 .bookingItem:last-child {
   border-bottom: none;
 }
+/* Financial Modal Enhancements */
+.financialDetailsContainer {
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.financialHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.transactionBadge {
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.financialMetrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.metricCard {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-left: 4px solid #4caf50;
+}
+
+.lossCard {
+  border-left-color: #f44336;
+}
+
+.metricIcon {
+  font-size: 24px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border-radius: 8px;
+}
+
+.metricContent {
+  flex: 1;
+}
+
+.metricLabel {
+  display: block;
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.metricValue {
+  display: block;
+  font-size: 18px;
+  font-weight: 700;
+  color: #333;
+}
+
+/* Labor Breakdown Section */
+.laborBreakdownSection {
+  margin-bottom: 32px;
+}
+
+.laborBreakdownSection h4 {
+  margin-bottom: 16px;
+  color: #333;
+  font-size: 18px;
+}
+
+.laborBreakdownGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.laborBreakdownItem {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.totalLabor {
+  border-color: #2196f3;
+  background: #f3f8ff;
+}
+
+.laborIcon {
+  font-size: 20px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+  border-radius: 8px;
+}
+
+.laborDetails {
+  flex: 1;
+}
+
+.laborLabel {
+  display: block;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.laborAmount {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1976d2;
+  margin-bottom: 2px;
+}
+
+.laborDescription {
+  display: block;
+  font-size: 12px;
+  color: #666;
+}
+
+/* Expense Categories */
+.expenseBreakdown {
+  margin-bottom: 32px;
+}
+
+.expenseBreakdown h4 {
+  margin-bottom: 16px;
+  color: #333;
+  font-size: 18px;
+}
+
+.expenseCategories {
+  display: flex;
+  gap: 12px;
+}
+
+.categoryItem {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  width: 30%;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.categoryIcon {
+  font-size: 18px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+  border-radius: 6px;
+}
+
+.categoryDetails {
+  flex: 1;
+}
+
+.categoryName {
+  display: block;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.categoryAmountRow {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.categoryAmount {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1976d2;
+}
+
+.categoryPercentage {
+  font-size: 14px;
+  color: #666;
+  background: #f0f0f0;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.categoryBar {
+  width: 100%;
+  height: 6px;
+  background: #e0e0e0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.categoryProgress {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50, #81c784);
+  transition: width 0.3s ease;
+}
+
+/* Transactions Section */
+.transactionsSection {
+  margin-bottom: 24px;
+}
+
+.transactionsSection h4 {
+  margin-bottom: 20px;
+  color: #333;
+  font-size: 18px;
+}
+
+.transactionCategory {
+  margin-bottom: 24px;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.categoryHeader {
+  background: #f8f9fa;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.categoryTitle {
+  font-weight: 600;
+  color: #333;
+  flex: 1;
+}
+
+.transactionCount {
+  font-size: 12px;
+  color: #666;
+  background: #e0e0e0;
+  padding: 4px 8px;
+  border-radius: 12px;
+}
+
+.transactionsList {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.transactionItem {
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.transactionItem:last-child {
+  border-bottom: none;
+}
+
+.transactionDetails {
+  flex: 1;
+}
+
+.transactionDescription {
+  display: block;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.transactionDate {
+  display: block;
+  font-size: 12px;
+  color: #666;
+}
+
+.transactionAmount {
+  font-weight: 700;
+  color: #1976d2;
+  margin-left: 12px;
+}
 
 @media (max-width: 768px) {
   .container {
@@ -436,5 +743,18 @@
 
   .detailItem span {
     text-align: left;
+  }
+  .financialMetrics {
+    grid-template-columns: 1fr;
+  }
+
+  .laborBreakdownGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .categoryAmountRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
   }
 }

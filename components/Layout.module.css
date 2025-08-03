@@ -62,7 +62,7 @@
 }
 
 .logoText h1 {
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   font-weight: 700;
   margin: 0;
   color: #111827;
@@ -70,7 +70,7 @@
 }
 
 .logoText p {
-  font-size: 0.75rem;
+  font-size: 1.4rem;
   color: #6b7280;
   margin: 0;
   font-weight: 500;
@@ -164,7 +164,240 @@
   padding: 1rem;
   border-top: 1px solid #e5e7eb;
 }
+/* ... existing styles ... */
 
+.reminderCounts {
+  margin-left: auto; /* Pushes badges to the right */
+  display: flex;
+  gap: 5px;
+}
+
+.countBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  color: white;
+  background-color: #ccc; /* Default */
+}
+
+.overdueBadge {
+  background-color: #dc3545; /* Red */
+}
+
+.dueTodayBadge {
+  background-color: #ffc107; /* Yellow/Orange */
+  color: #333; /* Darker text for yellow */
+}
+
+.criticalBadge {
+  background-color: #6f42c1; /* Purple */
+}
+
+/* Adjustments for active state if needed */
+.navItem.active .countBadge {
+  background-color: white; /* Or a contrasting color */
+  color: var(--primary-color); /* Use your primary color variable */
+}
+.notificationContainer {
+  position: relative;
+}
+
+.notificationPopup {
+  position: absolute;
+  top: 100%;
+  right: 100px;
+  width: 350px;
+  max-height: 400px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e5e7eb;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.notificationHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  background: rgb(234 88 12);
+}
+
+.notificationHeader h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  font-size: 16px;
+  font-weight: 1000;
+  cursor: pointer;
+  color: #ffffff;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.closeButton:hover {
+  color: #374151;
+}
+
+.notificationStats {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgb(255 237 213);
+  display: flex;
+  gap: 16px;
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.statLabel {
+  font-size: 11px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.statValue {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.statValue.overdue {
+  color: #dc2626;
+}
+
+.statValue.dueToday {
+  color: #2563eb;
+}
+
+.statValue.scheduled {
+  color: #059669;
+}
+
+.notificationList {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.notificationItem {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgb(255 237 213);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.notificationItem:last-child {
+  border-bottom: none;
+}
+
+.reminderInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.propertyName {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.serviceType {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.scheduledDate {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.status {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.status.pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status.overdue {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.status.scheduled {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.status.called {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.status.on_hold {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.noReminders {
+  padding: 20px 16px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.notificationFooter {
+  padding: 8px 16px;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.viewAllButton {
+  width: 100%;
+  padding: 8px 12px;
+  background: rgb(176, 176, 176);
+  color: rgb(0, 0, 0);
+  border: 1px solid rgb(0, 0, 0);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.viewAllButton:hover {
+  background: #1d4ed8;
+}
 .userProfile {
   display: flex;
   align-items: center;

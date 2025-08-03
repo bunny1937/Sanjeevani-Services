@@ -1,26 +1,53 @@
-// pages/invoices/[propertyId].jsx
-import { useEffect, useState } from "react";
+// pages/invoices/new.jsx - Create blank invoice with exact structure
+
+import { useState } from "react";
 import { useRouter } from "next/router";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import styles from "./Invoice.module.css";
 
-export default function InvoicePage() {
-  const { query } = useRouter();
-  const { propertyId } = query;
-  const [propertyData, setPropertyData] = useState(null);
-  const [invoice, setInvoice] = useState(null);
+export default function NewInvoicePage() {
+  const router = useRouter();
   const [editable, setEditable] = useState({
-    discount: { percentage: 10, amount: 0 },
-    customLineItems: [],
-    notes: "Dates would be Forwarded with Commencement of Contract.",
-    specialNote:
-      "Note: under these treatment we follow special Herbal Treatment.",
-    targetedPests:
-      "Targeted Towards - Cockroaches, Home Spiders, Ants and other minor - major pests.",
-    contractDuration: "1 Year",
+    // Client Information
+    clientInfo: {
+      name: "",
+      keyPerson: "",
+      location: "",
+      date: new Date().toLocaleDateString("en-GB"),
+    },
+
+    // Invoice Details
+    invoiceDetails: {
+      date: new Date().toLocaleDateString("en-GB"),
+      quotationNumber: Math.floor(Math.random() * 1000).toString(),
+      workOrderNumber: "",
+    },
+
+    // Subject
     subject: "",
-    includeServiceHistory: false,
+
+    // Line Items
+    customLineItems: [
+      {
+        srNo: 1,
+        particular: "",
+        serviceDue: "",
+        rate: "",
+        amount: 0,
+      },
+    ],
+
+    // Discount and totals
+    discount: { percentage: 10, amount: 0 },
+
+    // Contract details
+    contractDuration: "1 Year",
+
+    // Notes
+    notes: "Dates would be Forwarded with Commencement of Contract.",
+
+    // Special notes
     includeSpecialNotes: {
       includeSpecialTreatment: false,
       includeTargetedPests: false,
@@ -30,116 +57,8 @@ export default function InvoicePage() {
         "Targeted Towards - Cockroaches, Home Spiders, Ants and other minor - major pests.",
     },
   });
-  const [loading, setLoading] = useState(true);
+
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
-
-  useEffect(() => {
-    if (propertyId) {
-      fetch(`/api/property-details?propertyId=${propertyId}`)
-        .then((res) => res.json())
-        .then((data) => {
-          setPropertyData(data);
-          const property = data.property;
-          const serviceHistory = data.serviceHistory || [];
-
-          // Initialize with proper structure based on service type
-          let defaultLineItems = [];
-          let defaultSubject = "SERVICE QUOTATION";
-
-          if (property.serviceType === "Pest Control Service") {
-            defaultSubject = "YEARLY PEST CONTROL SERVICE PLAN";
-
-            // Create single line item with combined services
-            defaultLineItems = [
-              {
-                srNo: 1,
-                particular:
-                  "Professional Pest Control Management Service:\nType : General\n\nComprehensive Inspection of Property to\nIdentify Pest Activity & Assess the Extent of\nInfestation.\n\nScope of Work :\n\n1. Rodent (Rat) Management\n   (Key Infestation Areas: Garbage Zone & Garden)\n2. Spray Treatment Focused on Common Pest\n   Hotspots (according to inspection).\n   Targeted Towards - Cockroaches, Home Spiders,\n   Ants and other minor - major pests.\n   Note: under these treatment we follow special\n   Herbitical Treatment.",
-                serviceDue: "every 2 months\n\nevery 2 months",
-                rate: `Rs.1500/month\n\nRs.2000/month`,
-                amount: property.amount || 21000,
-                totalAmount: property.amount || 21000,
-              },
-            ];
-          } else if (property.serviceType === "Water Tank Cleaning") {
-            defaultSubject = "WATER TANK CLEANING SERVICE QUOTATION";
-
-            const tankDetails = [];
-            if (data.serviceDetails?.ohTank)
-              tankDetails.push(`OH Tank: ${data.serviceDetails.ohTank}`);
-            if (data.serviceDetails?.ugTank)
-              tankDetails.push(`UG Tank: ${data.serviceDetails.ugTank}`);
-            if (data.serviceDetails?.sintexTank)
-              tankDetails.push(
-                `Sintex Tank: ${data.serviceDetails.sintexTank}`
-              );
-
-            defaultLineItems = [
-              {
-                srNo: 1,
-                particular: `Water Tank Cleaning Service\n\n${tankDetails.join(
-                  "\n"
-                )}\n\nComplete cleaning and sanitization\nDisinfection and water quality testing`,
-                serviceDue: "Annual Service",
-                rate: `Rs.${property.amount}`,
-                amount: property.amount,
-                totalAmount: property.amount,
-              },
-            ];
-          } else if (property.serviceType === "Motor Repairing & Rewinding") {
-            defaultSubject = "MOTOR REPAIR & REWINDING SERVICE QUOTATION";
-
-            defaultLineItems = [
-              {
-                srNo: 1,
-                particular: `Motor Repairing & Rewinding Service\n\n${
-                  data.serviceDetails?.workDescription ||
-                  "Professional motor repair and rewinding"
-                }\n\nComplete diagnosis and repair\nTesting and quality assurance`,
-                serviceDue: "As Required",
-                rate: `Rs.${property.amount}`,
-                amount: property.amount,
-                totalAmount: property.amount,
-              },
-            ];
-          } else {
-            // Default for other services
-            defaultLineItems = [
-              {
-                srNo: 1,
-                particular: `${property.serviceType}\n\nProfessional service as per requirements\nComplete service delivery\nQuality assurance`,
-                serviceDue: "Annual Service",
-                rate: `Rs.${property.amount}`,
-                amount: property.amount,
-                totalAmount: property.amount,
-              },
-            ];
-          }
-
-          const totalAmount = defaultLineItems.reduce(
-            (sum, item) => sum + (item.amount || 0),
-            0
-          );
-          const discountAmount = Math.round((totalAmount * 10) / 100);
-
-          setEditable((prev) => ({
-            ...prev,
-            customLineItems: defaultLineItems,
-            discount: { percentage: 10, amount: discountAmount },
-            totalAmount,
-            grossTotal: totalAmount - discountAmount,
-            subject: defaultSubject,
-            includeServiceHistory: serviceHistory.length > 0,
-          }));
-
-          setLoading(false);
-        })
-        .catch((error) => {
-          console.error("Error fetching property data:", error);
-          setLoading(false);
-        });
-    }
-  }, [propertyId]);
 
   const calculateTotals = () => {
     const totalAmount = editable.customLineItems.reduce(
@@ -152,80 +71,6 @@ export default function InvoicePage() {
     const grossTotal = totalAmount - discountAmount;
 
     return { totalAmount, discountAmount, grossTotal };
-  };
-
-  const generateInvoice = async () => {
-    const { totalAmount, discountAmount, grossTotal } = calculateTotals();
-
-    try {
-      const response = await fetch("/api/generate-invoice", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          propertyId,
-          customLineItems: editable.customLineItems,
-          customDiscount: {
-            percentage: editable.discount.percentage,
-            amount: discountAmount,
-          },
-          customNotes: editable.notes,
-          contractDuration: editable.contractDuration,
-          includeServiceHistory: editable.includeServiceHistory,
-          customSubject: editable.subject,
-          includeSpecialNotes: editable.includeSpecialNotes,
-        }),
-      });
-
-      const result = await response.json();
-      if (response.ok) {
-        setInvoice(result.invoice);
-        alert("Invoice generated successfully!");
-      } else {
-        alert("Error generating invoice: " + result.message);
-      }
-    } catch (error) {
-      console.error("Error generating invoice:", error);
-      alert("Error generating invoice");
-    }
-  };
-
-  const handleDownload = async () => {
-    const element = document.getElementById("invoice-preview");
-    if (!element) return;
-
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      useCORS: true,
-      allowTaint: false,
-    });
-    const imgData = canvas.toDataURL("image/png");
-
-    const pdf = new jsPDF("p", "mm", "a4");
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-
-    const imgProps = pdf.getImageProperties(imgData);
-    const imgWidth = pageWidth;
-    const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
-
-    let heightLeft = imgHeight;
-    let position = 0;
-
-    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
-
-    while (heightLeft >= 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-    }
-
-    const fileName = `Invoice_${propertyData?.property?.name?.replace(
-      /\s+/g,
-      "_"
-    )}_${new Date().toISOString().split("T")[0]}.pdf`;
-    pdf.save(fileName);
   };
 
   const updateLineItem = (index, field, value) => {
@@ -257,55 +102,6 @@ export default function InvoicePage() {
     }));
     setEditable({ ...editable, customLineItems: renumberedItems });
   };
-  const createBlankInvoice = () => {
-    setEditable({
-      discount: { percentage: 10, amount: 0 },
-      customLineItems: [
-        {
-          srNo: 1,
-          particular: "",
-          serviceDue: "",
-          rate: "",
-          amount: 0,
-          totalAmount: 0,
-        },
-      ],
-      notes: "Dates would be Forwarded with Commencement of Contract.",
-      specialNote:
-        "Note: under these treatment we follow special Herbal Treatment.",
-      targetedPests:
-        "Targeted Towards - Cockroaches, Home Spiders, Ants and other minor - major pests.",
-      contractDuration: "1 Year",
-      subject: "",
-      includeServiceHistory: false,
-      includeSpecialNotes: {
-        includeSpecialTreatment: false,
-        includeTargetedPests: false,
-        specialTreatmentNote:
-          "Note: under these treatment we follow special Herbal Treatment.",
-        targetedPestsNote:
-          "Targeted Towards - Cockroaches, Home Spiders, Ants and other minor - major pests.",
-      },
-    });
-
-    // Clear property data to show blank invoice
-    setPropertyData({
-      property: {
-        name: "",
-        keyPerson: "",
-        contact: "",
-        location: "",
-        serviceType: "",
-        amount: 0,
-        serviceDate: new Date().toISOString().split("T")[0],
-      },
-      serviceHistory: [],
-    });
-  };
-
-  // 5. Update the addLineItem function:
-
-  // 6. Add preset templates function:
 
   const loadPresetTemplate = (serviceType) => {
     let template = {};
@@ -397,100 +193,204 @@ export default function InvoicePage() {
       ...prev,
       ...template,
       discount: { percentage: 10, amount: discountAmount },
-      totalAmount,
-      grossTotal: totalAmount - discountAmount,
     }));
   };
 
-  const regenerateFromServiceHistory = () => {
-    if (
-      !propertyData?.serviceHistory ||
-      propertyData.serviceHistory.length === 0
-    ) {
-      alert("No service history available for this property");
-      return;
+  const handleDownload = async () => {
+    const element = document.getElementById("invoice-preview");
+    if (!element) return;
+
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: false,
+    });
+    const imgData = canvas.toDataURL("image/png");
+
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    const imgProps = pdf.getImageProperties(imgData);
+    const imgWidth = pageWidth;
+    const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+
+    while (heightLeft >= 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
     }
 
-    const serviceHistory = propertyData.serviceHistory;
-    const property = propertyData.property;
-
-    const historyLineItems = serviceHistory.map((service, index) => {
-      const serviceDate = new Date(service.serviceDate).toLocaleDateString(
-        "en-GB"
-      );
-      let scopeOfWork = "Professional service as per requirements";
-
-      if (property.serviceType === "Water Tank Cleaning") {
-        const tankDetails = [];
-        if (propertyData.serviceDetails?.ohTank)
-          tankDetails.push(`OH Tank: ${propertyData.serviceDetails.ohTank}`);
-        if (propertyData.serviceDetails?.ugTank)
-          tankDetails.push(`UG Tank: ${propertyData.serviceDetails.ugTank}`);
-        if (propertyData.serviceDetails?.sintexTank)
-          tankDetails.push(
-            `Sintex Tank: ${propertyData.serviceDetails.sintexTank}`
-          );
-
-        scopeOfWork =
-          tankDetails.length > 0
-            ? `Water tank cleaning: ${tankDetails.join(", ")}`
-            : "Complete water tank cleaning and sanitization service";
-      } else if (property.serviceType === "Motor Repairing & Rewinding") {
-        scopeOfWork =
-          propertyData.serviceDetails?.workDescription ||
-          "Motor repair and rewinding service";
-      }
-
-      return {
-        srNo: index + 1,
-        particular: `${service.serviceType} - ${serviceDate}`,
-        serviceDue: service.status === "completed" ? "Completed" : "Scheduled",
-        rate: service.amount,
-        amount: service.amount,
-        scopeOfWork: scopeOfWork,
-      };
-    });
-
-    setEditable({
-      ...editable,
-      customLineItems: historyLineItems,
-      includeServiceHistory: true,
-    });
+    const fileName = `Invoice_${
+      editable.clientInfo.name?.replace(/\s+/g, "_") || "New"
+    }_${new Date().toISOString().split("T")[0]}.pdf`;
+    pdf.save(fileName);
   };
 
-  if (loading)
-    return <div className={styles.loading}>Loading property data...</div>;
-  if (!propertyData)
-    return <div className={styles.error}>Property not found</div>;
+  const saveInvoice = async () => {
+    const { totalAmount, discountAmount, grossTotal } = calculateTotals();
 
-  const { property, serviceHistory } = propertyData;
+    try {
+      const response = await fetch("/api/generate-invoice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          propertyId: null, // No property linked
+          customLineItems: editable.customLineItems,
+          customDiscount: {
+            percentage: editable.discount.percentage,
+            amount: discountAmount,
+          },
+          customNotes: editable.notes,
+          contractDuration: editable.contractDuration,
+          customSubject: editable.subject,
+          includeSpecialNotes: editable.includeSpecialNotes,
+          // Custom client info for blank invoices
+          customClientInfo: editable.clientInfo,
+          customInvoiceDetails: editable.invoiceDetails,
+        }),
+      });
+
+      const result = await response.json();
+      if (response.ok) {
+        alert("Invoice saved successfully!");
+        router.push("/invoices");
+      } else {
+        alert("Error saving invoice: " + result.message);
+      }
+    } catch (error) {
+      console.error("Error saving invoice:", error);
+      alert("Error saving invoice");
+    }
+  };
+
   const { totalAmount, discountAmount, grossTotal } = calculateTotals();
-  const currentDate = new Date().toLocaleDateString("en-IN");
-  const quotationNumber =
-    invoice?.quotationNumber || Math.floor(Math.random() * 1000).toString();
 
   return (
     <div className={styles.invoiceContainer}>
       {/* Edit Controls */}
       <div className={styles.editControls}>
-        <h2>Invoice Editor</h2>
+        <div className={styles.controlHeader}>
+          <h2>Create New Invoice</h2>
+          <div className={styles.headerActions}>
+            <button
+              onClick={() => router.push("/invoices")}
+              className={styles.backBtn}
+            >
+              ← Back to Invoices
+            </button>
+          </div>
+        </div>
 
-        {/* Property Info Summary */}
+        {/* Quick Templates */}
         <div className={styles.controlSection}>
-          <h3>Property Information</h3>
-          <div className={styles.propertyInfoSummary}>
-            <p>
-              <strong>{property.name}</strong> - {property.serviceType}
-            </p>
-            <p>
-              Contact: {property.contact} | Location: {property.location}
-            </p>
-            {serviceHistory.length > 0 && (
-              <p>
-                Service History: {serviceHistory.length} services (Total: ₹
-                {propertyData.stats?.totalAmount?.toLocaleString("en-IN")})
-              </p>
-            )}
+          <h3>Quick Templates</h3>
+          <div className={styles.templateButtons}>
+            <button
+              onClick={() => loadPresetTemplate("pest-control")}
+              className={styles.templateBtn}
+            >
+              🐛 Pest Control
+            </button>
+            <button
+              onClick={() => loadPresetTemplate("water-tank")}
+              className={styles.templateBtn}
+            >
+              💧 Water Tank Cleaning
+            </button>
+            <button
+              onClick={() => loadPresetTemplate("motor-repair")}
+              className={styles.templateBtn}
+            >
+              ⚙️ Motor Repair
+            </button>
+            <button
+              onClick={() => loadPresetTemplate("general")}
+              className={styles.templateBtn}
+            >
+              📋 General Service
+            </button>
+          </div>
+        </div>
+
+        {/* Client Information */}
+        <div className={styles.controlSection}>
+          <h3>Client Information</h3>
+          <div className={styles.configGrid}>
+            <div className={styles.configItem}>
+              <label>Client/Property Name:</label>
+              <input
+                type="text"
+                value={editable.clientInfo.name}
+                onChange={(e) =>
+                  setEditable({
+                    ...editable,
+                    clientInfo: {
+                      ...editable.clientInfo,
+                      name: e.target.value,
+                    },
+                  })
+                }
+                placeholder="Enter client or property name"
+              />
+            </div>
+            <div className={styles.configItem}>
+              <label>Key Person:</label>
+              <input
+                type="text"
+                value={editable.clientInfo.keyPerson}
+                onChange={(e) =>
+                  setEditable({
+                    ...editable,
+                    clientInfo: {
+                      ...editable.clientInfo,
+                      keyPerson: e.target.value,
+                    },
+                  })
+                }
+                placeholder="Contact person name"
+              />
+            </div>
+            <div className={styles.configItem}>
+              <label>Location:</label>
+              <input
+                type="text"
+                value={editable.clientInfo.location}
+                onChange={(e) =>
+                  setEditable({
+                    ...editable,
+                    clientInfo: {
+                      ...editable.clientInfo,
+                      location: e.target.value,
+                    },
+                  })
+                }
+                placeholder="Full address"
+              />
+            </div>
+            <div className={styles.configItem}>
+              <label>Service Date:</label>
+              <input
+                type="date"
+                value={editable.clientInfo.date}
+                onChange={(e) =>
+                  setEditable({
+                    ...editable,
+                    clientInfo: {
+                      ...editable.clientInfo,
+                      date: e.target.value,
+                    },
+                  })
+                }
+              />
+            </div>
           </div>
         </div>
 
@@ -506,7 +406,41 @@ export default function InvoicePage() {
                 onChange={(e) =>
                   setEditable({ ...editable, subject: e.target.value })
                 }
-                placeholder="Enter custom subject"
+                placeholder="Enter invoice subject"
+              />
+            </div>
+            <div className={styles.configItem}>
+              <label>Quotation Number:</label>
+              <input
+                type="text"
+                value={editable.invoiceDetails.quotationNumber}
+                onChange={(e) =>
+                  setEditable({
+                    ...editable,
+                    invoiceDetails: {
+                      ...editable.invoiceDetails,
+                      quotationNumber: e.target.value,
+                    },
+                  })
+                }
+                placeholder="Quote number"
+              />
+            </div>
+            <div className={styles.configItem}>
+              <label>Work Order Number:</label>
+              <input
+                type="text"
+                value={editable.invoiceDetails.workOrderNumber}
+                onChange={(e) =>
+                  setEditable({
+                    ...editable,
+                    invoiceDetails: {
+                      ...editable.invoiceDetails,
+                      workOrderNumber: e.target.value,
+                    },
+                  })
+                }
+                placeholder="Work order number (optional)"
               />
             </div>
             <div className={styles.configItem}>
@@ -525,38 +459,14 @@ export default function InvoicePage() {
                 <option value="As Required">As Required</option>
               </select>
             </div>
-            <div className={styles.configItem}>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={editable.includeServiceHistory}
-                  onChange={(e) =>
-                    setEditable({
-                      ...editable,
-                      includeServiceHistory: e.target.checked,
-                    })
-                  }
-                />
-                Include Service History in Line Items
-              </label>
-            </div>
           </div>
-
-          {serviceHistory.length > 0 && (
-            <button
-              onClick={regenerateFromServiceHistory}
-              className={styles.historyBtn}
-            >
-              Generate Line Items from Service History ({serviceHistory.length}{" "}
-              services)
-            </button>
-          )}
         </div>
 
+        {/* Line Items */}
         <div className={styles.controlSection}>
           <h3>Line Items</h3>
           {editable.customLineItems.map((item, index) => (
-            <div className={styles.lineItemEditor}>
+            <div key={index} className={styles.lineItemEditor}>
               <div className={styles.lineItemRow}>
                 <input
                   type="number"
@@ -629,6 +539,7 @@ export default function InvoicePage() {
           </button>
         </div>
 
+        {/* Discount */}
         <div className={styles.controlSection}>
           <h3>Discount</h3>
           <input
@@ -644,6 +555,7 @@ export default function InvoicePage() {
           />
         </div>
 
+        {/* Notes */}
         <div className={styles.controlSection}>
           <h3>Notes</h3>
           <textarea
@@ -740,9 +652,10 @@ export default function InvoicePage() {
           )}
         </div>
 
+        {/* Action Buttons */}
         <div className={styles.controlActions}>
-          <button onClick={generateInvoice} className={styles.generateBtn}>
-            Generate Invoice
+          <button onClick={saveInvoice} className={styles.generateBtn}>
+            Save Invoice
           </button>
           <button onClick={handleDownload} className={styles.downloadBtn}>
             Download PDF
@@ -750,11 +663,12 @@ export default function InvoicePage() {
         </div>
       </div>
 
-      {/* Invoice Preview */}
+      {/* Invoice Preview - Exact Structure */}
       <div id="invoice-preview" className={styles.invoicePreview}>
         <div className={styles.invoiceHeader}>
           <div className={styles.companyInfo}>
-            <h1>Sanjeevani Services</h1>
+            <h1>संजीवनी</h1>
+            <p className={styles.servicesText}>SERVICES</p>
           </div>
           <div className={styles.invoiceTitle}>
             <h2>QUOTE'</h2>
@@ -767,22 +681,26 @@ export default function InvoicePage() {
               <strong>To,</strong>
             </p>
             <p>
-              <strong>{property.keyPerson || property.name}</strong>
+              <strong>
+                {editable.clientInfo.keyPerson || "The Secretary / Chairman,"}
+              </strong>
             </p>
-            <p>{property.name}</p>
-            <p>{property.location}</p>
-            <p>Date: {property.serviceDate}</p>
+            <p>{editable.clientInfo.name || "Property Name"}</p>
+            <p>{editable.clientInfo.location || "Location"}</p>
+            <p>Date: {editable.clientInfo.date}</p>
           </div>
 
           <div className={styles.rightSection}>
             <p>
-              <strong>Date:</strong> {currentDate}
+              <strong>Date:</strong> {editable.invoiceDetails.date}
             </p>
             <p>
-              <strong>Quotation No:</strong> {quotationNumber}
+              <strong>Quotation No:</strong>{" "}
+              {editable.invoiceDetails.quotationNumber}
             </p>
             <p>
-              <strong>Work Order No:</strong>
+              <strong>Work Order No:</strong>{" "}
+              {editable.invoiceDetails.workOrderNumber}
             </p>
           </div>
         </div>
@@ -812,7 +730,6 @@ export default function InvoicePage() {
                 <td>{item.srNo}</td>
                 <td>
                   <div className={styles.particularCell}>
-                    {/* Render multiline particular content */}
                     {item.particular.split("\n").map((line, lineIndex) => (
                       <div
                         key={lineIndex}
@@ -825,7 +742,6 @@ export default function InvoicePage() {
                 </td>
                 <td>
                   <div className={styles.serviceDueCell}>
-                    {/* Render multiline service due content */}
                     {item.serviceDue &&
                       item.serviceDue
                         .split("\n")
@@ -836,7 +752,6 @@ export default function InvoicePage() {
                 </td>
                 <td>
                   <div className={styles.rateCell}>
-                    {/* Render multiline rate content */}
                     {item.rate &&
                       item.rate
                         .toString()
@@ -850,61 +765,67 @@ export default function InvoicePage() {
               </tr>
             ))}
 
-            {/* Add empty rows for spacing if needed */}
-            <tr>
-              <td
-                colSpan="5"
-                style={{
-                  height: "20px",
-                  borderLeft: "none",
-                  borderRight: "none",
-                }}
-              ></td>
+            {/* Totals Row */}
+            <tr className={styles.totalsRow}>
+              <td colSpan="4" className={styles.totalLabel}>
+                TOTAL
+              </td>
+              <td className={styles.totalAmount}>
+                {totalAmount.toLocaleString("en-IN")}
+              </td>
+            </tr>
+            <tr className={styles.totalsRow}>
+              <td colSpan="4" className={styles.totalLabel}>
+                DISCOUNT {editable.discount.percentage}%
+              </td>
+              <td className={styles.discountAmount}>
+                -{discountAmount.toLocaleString("en-IN")}
+              </td>
+            </tr>
+            <tr className={styles.grossTotalRow}>
+              <td colSpan="4" className={styles.grossTotalLabel}>
+                <strong>GROSS TOTAL</strong>
+              </td>
+              <td className={styles.grossTotalAmount}>
+                <strong>{grossTotal.toLocaleString("en-IN")}</strong>
+              </td>
             </tr>
           </tbody>
         </table>
-
-        <div className={styles.totalsSection}>
-          <div className={styles.totalsTable}>
-            <div className={styles.totalRow}>
-              <span>TOTAL</span>
-              <span>{totalAmount.toLocaleString("en-IN")}</span>
-            </div>
-            <div className={styles.totalRow}>
-              <span>DISCOUNT {editable.discount.percentage}%</span>
-              <span>-{discountAmount.toLocaleString("en-IN")}</span>
-            </div>
-            <div className={styles.totalRow}>
-              <span>
-                <strong>GROSS TOTAL</strong>
-              </span>
-              <span>
-                <strong>{grossTotal.toLocaleString("en-IN")}</strong>
-              </span>
-            </div>
-          </div>
-        </div>
 
         <div className={styles.amountInWords}>
           <p>
             <strong>Amount In Words:</strong> {convertToWords(grossTotal)}{" "}
             Rupees Only.
           </p>
+          <div className={styles.signatureSection}>
+            <p>
+              <strong>For Sanjeevani Services</strong>
+            </p>
+            <div className={styles.signatureSpace}></div>
+            <p>
+              <strong>Authorised Signatory.</strong>
+            </p>
+          </div>
         </div>
 
         <div className={styles.contractDetails}>
           <p>
             <strong>Duration of Contract:</strong> {editable.contractDuration}
           </p>
+          <p>
+            <strong>Frequency Mentioned Above</strong>
+          </p>
+          <p>
+            <strong>in Accordance with the Treatment.</strong>
+          </p>
         </div>
 
-        <div className={styles.scopeOfWork}>
+        <div className={styles.generalNotes}>
           <p>
-            <strong>Scope of Work:</strong>
+            <strong>NOTE:</strong>
           </p>
-          <p>Identify Pest Activity & Assess the Extent of Infestation.</p>
-          <p>Comprehensive Inspection of Property to</p>
-          <p>Professional Pest Control Management Service:</p>
+          <p>{editable.notes}</p>
         </div>
 
         {editable.includeSpecialNotes.includeSpecialTreatment && (
@@ -919,21 +840,26 @@ export default function InvoicePage() {
           </div>
         )}
 
-        <div className={styles.generalNotes}>
-          <p>
-            <strong>NOTE:</strong>
-          </p>
-          <p>Frequency Mentioned Above in Accordance with the Treatment.</p>
-          <p>{editable.notes}</p>
+        <div className={styles.serviceCategories}>
+          <div className={styles.categoryRow}>
+            <div className={styles.category}>WATER TANK CLEANING</div>
+            <div className={styles.category}>PEST CONTROL SERVICE</div>
+          </div>
+          <div className={styles.categoryRow}>
+            <div className={styles.category}>HOUSE KEEPING</div>
+            <div className={styles.category}>MOTOR REPAIRING & REWINDING</div>
+          </div>
         </div>
 
         <div className={styles.footer}>
-          <div className={styles.companyDetails}>
+          <div className={styles.locationInfo}>
             <p>
               <strong>
                 DOMBIVLI | KALYAN | THANE | MULUND | GHATKOPAR | AIROLI | VASHI
               </strong>
             </p>
+          </div>
+          <div className={styles.contactInfo}>
             <p>
               Contact: 7715823333 / 9930742021 | Email Id:
               sanjeevaniservices1@gmail.com
@@ -941,16 +867,6 @@ export default function InvoicePage() {
             <p>
               Address: Sanjeevani Services, Shivalik Apt. Lokmanya Nagar, Thane
               - 400606
-            </p>
-          </div>
-
-          <div className={styles.signature}>
-            <p>
-              <strong>For Sanjeevani Services</strong>
-            </p>
-            <div className={styles.signatureSpace}></div>
-            <p>
-              <strong>Authorised Signatory.</strong>
             </p>
           </div>
         </div>

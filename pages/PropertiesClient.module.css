@@ -307,6 +307,220 @@
   font-style: italic;
   padding: 2rem;
 }
+/* Modal Overlay */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+/* Modal Content */
+.modalContent {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  max-width: 800px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+/* Modal Header */
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 32px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f8fafc;
+  border-radius: 12px 12px 0 0;
+}
+
+.modalHeader h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.closeButton:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+/* Form Styles */
+.form {
+  padding: 32px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.formGroup label {
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.formGroup input,
+.formGroup select {
+  padding: 12px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  background-color: white;
+}
+
+.formGroup input:focus,
+.formGroup select:focus {
+  outline: none;
+  border-color: #e67e22;
+  box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.1);
+}
+
+.formGroup input::placeholder {
+  color: #9ca3af;
+}
+
+.formGroup small {
+  margin-top: 6px;
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* Checkbox Label */
+.checkboxLabel {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 400 !important;
+  margin-bottom: 0 !important;
+}
+
+.checkboxLabel input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: #e67e22;
+}
+
+/* Service Information */
+.serviceInfo {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 8px;
+}
+
+.serviceInfo h4 {
+  margin: 0 0 12px 0;
+  color: #e67e22;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.serviceInfo p {
+  margin: 8px 0;
+  color: #4b5563;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.serviceInfo strong {
+  color: #374151;
+}
+
+/* Form Actions */
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 24px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.cancelButton {
+  padding: 12px 24px;
+  border: 2px solid #e5e7eb;
+  background: white;
+  color: #6b7280;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+
+.cancelButton:hover:not(:disabled) {
+  border-color: #d1d5db;
+  color: #374151;
+  background-color: #f9fafb;
+}
+
+.submitButton {
+  padding: 12px 24px;
+  background: #e67e22;
+  color: white;
+  border: 2px solid #e67e22;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+
+.submitButton:hover:not(:disabled) {
+  background: #d35400;
+  border-color: #d35400;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(230, 126, 34, 0.3);
+}
+
+.submitButton:disabled,
+.cancelButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 /* Add these styles to your PropertiesClient.module.css file */
 
 .statusBadge {
@@ -397,22 +611,32 @@
   .table td {
     padding: 0.5rem;
   }
-  .formGrid {
-    grid-template-columns: 1fr;
-  }
-
   .modalContent {
     margin: 10px;
-    max-width: none;
+    max-height: calc(100vh - 20px);
+  }
+
+  .modalHeader {
+    padding: 20px 24px 16px;
+  }
+
+  .form {
+    padding: 24px;
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+    gap: 20px;
   }
 
   .formActions {
-    flex-direction: column;
+    flex-direction: column-reverse;
   }
 
   .cancelButton,
   .submitButton {
     width: 100%;
+    justify-content: center;
   }
   .viewModalContent {
     margin: 10px;
@@ -435,5 +659,26 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 5px;
+  }
+}
+@media (max-width: 480px) {
+  .modalOverlay {
+    padding: 10px;
+  }
+
+  .modalHeader {
+    padding: 16px 20px 12px;
+  }
+
+  .modalHeader h2 {
+    font-size: 20px;
+  }
+
+  .form {
+    padding: 20px;
+  }
+
+  .formGrid {
+    gap: 16px;
   }
 }

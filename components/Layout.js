@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import styles from "./Layout.module.css";
@@ -8,6 +8,18 @@ import styles from "./Layout.module.css";
 const Layout = ({ children }) => {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [recentReminders, setRecentReminders] = useState([]);
+  const [reminderStats, setReminderStats] = useState({
+    totalReminders: 0,
+    overdue: 0,
+    dueToday: 0,
+    upcoming: 0,
+    scheduled: 0,
+    completed: 0,
+    critical: 0,
+    on_hold: 0,
+  });
 
   const navigation = [
     { name: "Dashboard", href: "/", icon: "📊", color: "blue" },
@@ -30,6 +42,34 @@ const Layout = ({ children }) => {
       color: "orange",
     },
   ];
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch("/api/reminders");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.stats) {
+            setReminderStats(data.stats);
+          }
+
+          // Get recent reminders for notification popup
+          const recent = [
+            ...(data.overdueReminders || []).slice(0, 3),
+            ...(data.reminders || []).slice(0, 3),
+            ...(data.scheduledReminders || []).slice(0, 2),
+          ].slice(0, 5);
+          setRecentReminders(recent);
+        }
+      } catch (error) {
+        console.error("Error fetching reminder stats:", error);
+      }
+    };
+    fetchStats();
+    // Optionally, refetch stats periodically
+    const interval = setInterval(fetchStats, 60000); // Every minute
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className={styles.layoutContainer}>
@@ -94,6 +134,34 @@ const Layout = ({ children }) => {
                     <span>{item.icon}</span>
                   </div>
                   <span className={styles.navItemText}>{item.name}</span>
+                  {item.name === "Reminders" && (
+                    <div className={styles.reminderCounts}>
+                      {reminderStats.overdue > 0 && (
+                        <span
+                          className={`${styles.countBadge} ${styles.overdueBadge}`}
+                          title="Overdue Reminders"
+                        >
+                          {reminderStats.overdue}
+                        </span>
+                      )}
+                      {reminderStats.dueToday > 0 && (
+                        <span
+                          className={`${styles.countBadge} ${styles.dueTodayBadge}`}
+                          title="Due Today"
+                        >
+                          {reminderStats.dueToday}
+                        </span>
+                      )}
+                      {reminderStats.critical > 0 && (
+                        <span
+                          className={`${styles.countBadge} ${styles.criticalBadge}`}
+                          title="Critical Reminders"
+                        >
+                          {reminderStats.critical}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   {router.pathname === item.href && (
                     <div className={styles.activeIndicator} />
                   )}
@@ -129,10 +197,101 @@ const Layout = ({ children }) => {
           </div>
 
           <div className={styles.topBarRight}>
-            <button className={styles.notificationButton}>
-              <span>🔔</span>
-              <div className={styles.notificationBadge}>3</div>
-            </button>
+            <div className={styles.notificationContainer}>
+              <button
+                className={styles.notificationButton}
+                onClick={() => setNotificationOpen(!notificationOpen)}
+              >
+                <span>🔔</span>
+                <div className={styles.notificationBadge}>
+                  {reminderStats.overdue +
+                    reminderStats.dueToday +
+                    reminderStats.critical}
+                </div>
+              </button>
+
+              {notificationOpen && (
+                <div className={styles.notificationPopup}>
+                  <div className={styles.notificationHeader}>
+                    <h3>Recent Reminders</h3>
+                    <button
+                      onClick={() => setNotificationOpen(false)}
+                      className={styles.closeButton}
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div className={styles.notificationStats}>
+                    <div className={styles.statItem}>
+                      <span className={styles.statLabel}>Overdue:</span>
+                      <span className={`${styles.statValue} ${styles.overdue}`}>
+                        {reminderStats.overdue}
+                      </span>
+                    </div>
+                    <div className={styles.statItem}>
+                      <span className={styles.statLabel}>Due Today:</span>
+                      <span
+                        className={`${styles.statValue} ${styles.dueToday}`}
+                      >
+                        {reminderStats.dueToday}
+                      </span>
+                    </div>
+                    <div className={styles.statItem}>
+                      <span className={styles.statLabel}>Scheduled:</span>
+                      <span
+                        className={`${styles.statValue} ${styles.scheduled}`}
+                      >
+                        {reminderStats.scheduled}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className={styles.notificationList}>
+                    {recentReminders.length > 0 ? (
+                      recentReminders.map((reminder, index) => (
+                        <div key={index} className={styles.notificationItem}>
+                          <div className={styles.reminderInfo}>
+                            <span className={styles.propertyName}>
+                              {reminder.propertyName}
+                            </span>
+                            <span className={styles.serviceType}>
+                              {reminder.serviceType}
+                            </span>
+                            <span className={styles.scheduledDate}>
+                              {reminder.scheduledDate
+                                ? new Date(
+                                    reminder.scheduledDate
+                                  ).toLocaleDateString("en-GB")
+                                : "No date set"}
+                            </span>
+                          </div>
+                          <span
+                            className={`${styles.status} ${
+                              styles[reminder.status]
+                            }`}
+                          >
+                            {reminder.status}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className={styles.noReminders}>
+                        No recent reminders
+                      </div>
+                    )}
+                  </div>
+
+                  <div className={styles.notificationFooter}>
+                    <Link href="/reminders">
+                      <button className={styles.viewAllButton}>
+                        View All Reminders
+                      </button>
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
             <button className={styles.profileButton}>
               <div className={styles.userProfile}>
                 <div className={styles.userAvatar}>👤</div>

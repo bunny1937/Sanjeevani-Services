@@ -1,9 +1,10 @@
-// pages/api/generate-invoice.js
+// Updated pages/api/generate-invoice.js - Handle both property-based and blank invoices
+
 import connectDB from "../../lib/mongodb.js";
 import Invoice from "../../models/Invoice.js";
 import mongoose from "mongoose";
 
-// Use existing schemas (same as in property-details.js)
+// Use existing schemas
 const PropertySchema = new mongoose.Schema(
   {
     name: String,
@@ -46,34 +47,39 @@ export default async function handler(req, res) {
         includeServiceHistory,
         customSubject,
         includeSpecialNotes,
+        customClientInfo,
+        customInvoiceDetails,
       } = req.body;
 
-      if (!propertyId) {
-        return res.status(400).json({ message: "Property ID is required" });
+      let property = null;
+      let serviceHistory = [];
+      let serviceDetails = {};
+
+      // Handle property-based invoices
+      if (propertyId) {
+        // Get comprehensive property details
+        const propertyDetailsResponse = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
+          }/api/property-details?propertyId=${propertyId}`
+        );
+        const propertyDetailsData = await propertyDetailsResponse.json();
+
+        if (!propertyDetailsData.property) {
+          return res.status(404).json({ message: "Property not found" });
+        }
+
+        property = propertyDetailsData.property;
+        serviceHistory = propertyDetailsData.serviceHistory || [];
+        serviceDetails = propertyDetailsData.serviceDetails || {};
       }
-
-      // Get comprehensive property details
-      const propertyDetailsResponse = await fetch(
-        `${
-          process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
-        }/api/property-details?propertyId=${propertyId}`
-      );
-      const propertyDetailsData = await propertyDetailsResponse.json();
-
-      if (!propertyDetailsData.property) {
-        return res.status(404).json({ message: "Property not found" });
-      }
-
-      const property = propertyDetailsData.property;
-      const serviceHistory = propertyDetailsData.serviceHistory || [];
-      const serviceDetails = propertyDetailsData.serviceDetails || {};
 
       // Generate line items based on service type, history, and custom requirements
       let lineItems = [];
 
       if (customLineItems && customLineItems.length > 0) {
         lineItems = customLineItems;
-      } else {
+      } else if (property) {
         // Generate line items based on service history if requested
         if (includeServiceHistory && serviceHistory.length > 0) {
           lineItems = serviceHistory.map((service, index) => {
@@ -134,34 +140,21 @@ export default async function handler(req, res) {
             };
           });
         } else {
-          // Default single line item for current service
+          // Default line items for property-based invoices
           let scopeOfWork = "Professional service as per requirements";
           let serviceDue = "One-time Service";
 
           // Enhanced scope based on service type and details
           if (property.serviceType === "Pest Control Service") {
-            const monthlyRate = Math.round(property.amount / 12);
-            const rodentRate = Math.round(monthlyRate * 0.75);
-
+            // Create single line item with combined pest control services (matching image structure)
             lineItems = [
               {
                 srNo: 1,
                 particular:
-                  "Spray Treatment Focused on Common Pest every 2 months",
-                serviceDue: `Rs.${monthlyRate}/month`,
-                rate: monthlyRate,
-                amount: monthlyRate * 12,
-                scopeOfWork:
-                  "Targeted spray treatment for hotspots (according to inspection)",
-              },
-              {
-                srNo: 2,
-                particular: "Rodent (Rat) Management every 2 months",
-                serviceDue: `Rs.${rodentRate}/month`,
-                rate: rodentRate,
-                amount: rodentRate * 12,
-                scopeOfWork:
-                  "Rodent control in key infestation areas - garbage zones & garden areas",
+                  "Professional Pest Control Management Service:\nType : General\n\nComprehensive Inspection of Property to\nIdentify Pest Activity & Assess the Extent of\nInfestation.\n\nScope of Work :\n\n1. Rodent (Rat) Management\n   (Key Infestation Areas: Garbage Zone & Garden)\n2. Spray Treatment Focused on Common Pest\n   Hotspots (according to inspection).\n   Targeted Towards - Cockroaches, Home Spiders,\n   Ants and other minor - major pests.\n   Note: under these treatment we follow special\n   Herbitical Treatment.",
+                serviceDue: "every 2 months\n\nevery 2 months",
+                rate: "Rs.1500/month\n\nRs.2000/month",
+                amount: property.amount || 21000,
               },
             ];
           } else {
@@ -183,10 +176,10 @@ export default async function handler(req, res) {
                   : "Complete water tank cleaning and sanitization";
 
               if (serviceDetails.numberOfFloors) {
-                scopeOfWork += `. Building floors: ${serviceDetails.numberOfFloors}`;
+                scopeOfWork += `\nBuilding floors: ${serviceDetails.numberOfFloors}`;
               }
               if (serviceDetails.wing) {
-                scopeOfWork += `. Wing: ${serviceDetails.wing}`;
+                scopeOfWork += `\nWing: ${serviceDetails.wing}`;
               }
 
               serviceDue =
@@ -210,11 +203,10 @@ export default async function handler(req, res) {
             lineItems = [
               {
                 srNo: 1,
-                particular: property.serviceType,
+                particular: scopeOfWork,
                 serviceDue: serviceDue,
-                rate: property.amount,
+                rate: `Rs.${property.amount}`,
                 amount: property.amount,
-                scopeOfWork: scopeOfWork,
               },
             ];
           }
@@ -236,29 +228,36 @@ export default async function handler(req, res) {
       const invoiceCount = await Invoice.countDocuments();
       const quotationNumber = String(invoiceCount + 1);
 
-      // Determine subject based on service type
+      // Determine subject based on service type or use custom
       let subject = customSubject || "SERVICE QUOTATION";
-      if (property.serviceType === "Pest Control Service") {
-        subject = "YEARLY PEST CONTROL SERVICE PLAN";
-      } else if (property.serviceType === "Water Tank Cleaning") {
-        subject = "WATER TANK CLEANING SERVICE QUOTATION";
-      } else if (property.serviceType === "Motor Repairing & Rewinding") {
-        subject = "MOTOR REPAIR & REWINDING SERVICE QUOTATION";
-      } else if (property.serviceType === "House Keeping") {
-        subject = "HOUSEKEEPING SERVICE QUOTATION";
+      if (property && !customSubject) {
+        if (property.serviceType === "Pest Control Service") {
+          subject = "YEARLY PEST CONTROL SERVICE PLAN";
+        } else if (property.serviceType === "Water Tank Cleaning") {
+          subject = "WATER TANK CLEANING SERVICE QUOTATION";
+        } else if (property.serviceType === "Motor Repairing & Rewinding") {
+          subject = "MOTOR REPAIR & REWINDING SERVICE QUOTATION";
+        } else if (property.serviceType === "House Keeping") {
+          subject = "HOUSEKEEPING SERVICE QUOTATION";
+        }
       }
 
       // Create invoice with enhanced data
-      const invoice = new Invoice({
-        propertyId,
-        propertyName: property.name,
-        keyPerson: property.keyPerson,
-        contact: property.contact,
-        location: property.location,
-        serviceDate: property.serviceDate,
-        serviceType: property.serviceType,
+      const invoiceData = {
+        propertyId: propertyId || null,
+        propertyName:
+          property?.name || customClientInfo?.name || "Custom Invoice",
+        keyPerson: property?.keyPerson || customClientInfo?.keyPerson || "",
+        contact: property?.contact || "",
+        location: property?.location || customClientInfo?.location || "",
+        serviceDate:
+          property?.serviceDate ||
+          new Date(customClientInfo?.date || new Date()),
+        serviceType: property?.serviceType || "Custom Service",
         subject: subject,
-        quotationNumber,
+        quotationNumber:
+          customInvoiceDetails?.quotationNumber || quotationNumber,
+        workOrderNumber: customInvoiceDetails?.workOrderNumber || "",
         lineItems,
         totalAmount,
         discount: {
@@ -288,8 +287,10 @@ export default async function handler(req, res) {
         // Store additional context
         includeServiceHistory: includeServiceHistory || false,
         serviceHistoryCount: serviceHistory.length,
-      });
+        isCustomInvoice: !propertyId, // Flag for blank/custom invoices
+      };
 
+      const invoice = new Invoice(invoiceData);
       await invoice.save();
 
       return res.status(201).json({

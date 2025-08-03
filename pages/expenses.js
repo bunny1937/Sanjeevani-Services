@@ -1,40 +1,45 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import styles from "./Expenses.module.css";
 
 const Expenses = () => {
   const [expenses, setExpenses] = useState([]);
   const [filteredExpenses, setFilteredExpenses] = useState([]);
   const [stats, setStats] = useState({
-    periodRevenue: 0,
+    periodRevenue: 0, // Added for clarity, though calculated
     periodExpenses: 0,
     periodProfit: 0,
-    monthlyRevenue: 0,
+    monthlyRevenue: 0, // Added for clarity
     monthlyExpenses: 0,
     monthlyProfit: 0,
-    yearlyRevenue: 0,
+    yearlyRevenue: 0, // Added for clarity
     yearlyExpenses: 0,
     yearlyProfit: 0,
-    dailyRevenue: 0,
+    dailyRevenue: 0, // Added for clarity
     dailyExpenses: 0,
     dailyProfit: 0,
-    totalRevenue: 0,
+    totalRevenue: 0, // Added for clarity
     totalExpenses: 0,
     totalProfit: 0,
-    avgMonthlyProfit: 0,
+    avgMonthlyRevenue: 0, // Added for clarity
+    avgMonthlyExpenses: 0, // Added for clarity
+    avgMonthlyProfit: 0, // Added for clarity
     profitMargin: 0,
     expenseBreakdown: {},
     monthlyTrends: [],
     topExpenseCategories: [],
+    periodLaborExpenses: 0, // New: Total labor expenses for the period
+    periodLaborExpenseBreakdown: {}, // New: Detailed labor expenses for the period
   });
   const [showAddForm, setShowAddForm] = useState(false);
-  const [selectedPeriod, setSelectedPeriod] = useState("daily");
+  const [selectedPeriod, setSelectedPeriod] = useState("monthly"); // Changed default to monthly for better labor expense visibility
   const [currentDate, setCurrentDate] = useState(new Date());
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState("");
   const [showCalendar, setShowCalendar] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showLaborDetailModal, setShowLaborDetailModal] = useState(false); // New state for labor detail modal
   const [formData, setFormData] = useState({
     date: "",
     type: "",
@@ -47,14 +52,6 @@ const Expenses = () => {
   useEffect(() => {
     fetchExpenses();
   }, []);
-
-  useEffect(() => {
-    fetchStats();
-  }, [currentDate, selectedPeriod]);
-
-  useEffect(() => {
-    filterExpenses();
-  }, [expenses, searchTerm, selectedType, currentDate, selectedPeriod]);
 
   const fetchExpenses = async () => {
     setIsLoading(true);
@@ -71,7 +68,7 @@ const Expenses = () => {
     }
   };
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     setIsLoading(true);
     try {
       const dateParam = formatDateForAPI(currentDate);
@@ -87,12 +84,14 @@ const Expenses = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentDate, selectedPeriod]);
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
 
-  const filterExpenses = () => {
+  const filterExpenses = useCallback(() => {
     let filtered = [...expenses];
 
-    // Filter by period and date
     if (selectedPeriod === "daily") {
       const targetDate = formatDateForAPI(currentDate);
       filtered = filtered.filter((expense) => {
@@ -119,9 +118,7 @@ const Expenses = () => {
         return expenseDate.getFullYear() === targetYear;
       });
     }
-    // For "total" period, show all expenses (no date filtering)
 
-    // Filter by search term
     if (searchTerm.trim()) {
       filtered = filtered.filter(
         (expense) =>
@@ -134,16 +131,17 @@ const Expenses = () => {
       );
     }
 
-    // Filter by type
     if (selectedType) {
       filtered = filtered.filter((expense) => expense.type === selectedType);
     }
 
-    // Sort by date (newest first)
     filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
 
     setFilteredExpenses(filtered);
-  };
+  }, [expenses, searchTerm, selectedType, currentDate, selectedPeriod]);
+  useEffect(() => {
+    filterExpenses();
+  }, [filterExpenses]);
 
   const formatDateForAPI = (date) => {
     return date.toISOString().split("T")[0];
@@ -246,43 +244,20 @@ const Expenses = () => {
   };
 
   const getStatsForPeriod = () => {
-    switch (selectedPeriod) {
-      case "daily":
-        return {
-          revenue: stats.periodRevenue || stats.dailyRevenue,
-          expenses: stats.periodExpenses || stats.dailyExpenses,
-          profit: stats.periodProfit || stats.dailyProfit,
-          period: "Today",
-        };
-      case "monthly":
-        return {
-          revenue: stats.periodRevenue || stats.monthlyRevenue,
-          expenses: stats.periodExpenses || stats.monthlyExpenses,
-          profit: stats.periodProfit || stats.monthlyProfit,
-          period: "This Month",
-        };
-      case "yearly":
-        return {
-          revenue: stats.periodRevenue || stats.yearlyRevenue,
-          expenses: stats.periodExpenses || stats.yearlyExpenses,
-          profit: stats.periodProfit || stats.yearlyProfit,
-          period: "This Year",
-        };
-      case "total":
-        return {
-          revenue: stats.totalRevenue,
-          expenses: stats.totalExpenses,
-          profit: stats.totalProfit,
-          period: "All Time",
-        };
-      default:
-        return {
-          revenue: stats.periodRevenue || stats.dailyRevenue,
-          expenses: stats.periodExpenses || stats.dailyExpenses,
-          profit: stats.periodProfit || stats.dailyProfit,
-          period: "Today",
-        };
-    }
+    // The API now returns combined expenses, so we just use periodExpenses
+    return {
+      expenses: stats.periodExpenses,
+      profit: stats.periodProfit,
+      laborExpenses: stats.periodLaborExpenses, // New: Labor expenses for the period
+      period:
+        selectedPeriod === "daily"
+          ? "Today"
+          : selectedPeriod === "monthly"
+          ? "This Month"
+          : selectedPeriod === "yearly"
+          ? "This Year"
+          : "All Time",
+    };
   };
 
   const clearFilters = () => {
@@ -391,26 +366,41 @@ const Expenses = () => {
 
       {/* Main Financial Overview */}
       <div className={styles.statsGrid}>
-        <div className={`${styles.statCard} ${styles.revenueCard}`}>
-          <div className={styles.statContent}>
-            <div className={styles.statInfo}>
-              <h3>{formatCurrency(currentStats.revenue)}</h3>
-              <p className={styles.statTitle}>Revenue</p>
-              <p className={styles.statDescription}>{formatDateDisplay()}</p>
-            </div>
-            <div className={styles.statIcon}>💰</div>
-          </div>
-        </div>
         <div className={`${styles.statCard} ${styles.expenseCard}`}>
           <div className={styles.statContent}>
             <div className={styles.statInfo}>
               <h3>{formatCurrency(currentStats.expenses)}</h3>
-              <p className={styles.statTitle}>Expenses</p>
+              <p className={styles.statTitle}>Total Expenses</p>
               <p className={styles.statDescription}>{formatDateDisplay()}</p>
             </div>
             <div className={styles.statIcon}>📊</div>
           </div>
         </div>
+        {/* New Labor Expenses Card */}
+        {(selectedPeriod === "monthly" ||
+          selectedPeriod === "yearly" ||
+          selectedPeriod === "total") && (
+          <div
+            className={`${styles.statCard} ${styles.laborExpenseCard}`}
+            onClick={() => setShowLaborDetailModal(true)}
+          >
+            <div className={styles.statContent}>
+              <div className={styles.statInfo}>
+                <h3>{formatCurrency(currentStats.laborExpenses)}</h3>
+                <p className={styles.statTitle}>Labor Expenses</p>
+                <p className={styles.statDescription}>
+                  {selectedPeriod === "monthly"
+                    ? "This Month"
+                    : selectedPeriod === "yearly"
+                    ? "This Year"
+                    : "All Time"}{" "}
+                  (Click for details)
+                </p>
+              </div>
+              <div className={styles.statIcon}>👷</div>
+            </div>
+          </div>
+        )}
         <div
           className={`${styles.statCard} ${
             currentStats.profit >= 0 ? styles.profitCard : styles.lossCard
@@ -432,7 +422,7 @@ const Expenses = () => {
         <div className={`${styles.statCard} ${styles.marginCard}`}>
           <div className={styles.statContent}>
             <div className={styles.statInfo}>
-              <h3>{stats.profitMargin.toFixed(1)}%</h3>
+              <h3>{(stats.profitMargin ?? 0).toFixed(1)}%</h3>
               <p className={styles.statTitle}>Profit Margin</p>
               <p className={styles.statDescription}>Annual Performance</p>
             </div>
@@ -440,6 +430,51 @@ const Expenses = () => {
           </div>
         </div>
       </div>
+
+      {/* Labor Detail Modal */}
+      {showLaborDetailModal && (
+        <div className={styles.modal}>
+          <div className={styles.modalContent}>
+            <div className={styles.modalHeader}>
+              <h2>Labor Expenses Detail - {formatDateDisplay()}</h2>
+              <button
+                className={styles.closeBtn}
+                onClick={() => setShowLaborDetailModal(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className={styles.laborDetailList}>
+              {Object.keys(stats.periodLaborExpenseBreakdown).length === 0 ? (
+                <p className={styles.noData}>
+                  No labor expenses for this period.
+                </p>
+              ) : (
+                Object.entries(stats.periodLaborExpenseBreakdown).map(
+                  ([name, amount]) => (
+                    <div key={name} className={styles.laborDetailItem}>
+                      <span>{name}:</span>
+                      <span>{formatCurrency(amount)}</span>
+                    </div>
+                  )
+                )
+              )}
+              <div className={styles.laborDetailTotal}>
+                <span>Total Labor Expenses:</span>
+                <span>{formatCurrency(stats.periodLaborExpenses)}</span>
+              </div>
+            </div>
+            <div className={styles.formButtons}>
+              <button
+                onClick={() => setShowLaborDetailModal(false)}
+                className={styles.cancelBtn}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Detailed Financial Breakdown */}
       <div className={styles.detailedStats}>
@@ -452,12 +487,6 @@ const Expenses = () => {
                 <span className={styles.detailIcon}>📅</span>
               </div>
               <div className={styles.detailContent}>
-                <div className={styles.detailRow}>
-                  <span>Revenue:</span>
-                  <span className={styles.positive}>
-                    {formatCurrency(stats.dailyRevenue)}
-                  </span>
-                </div>
                 <div className={styles.detailRow}>
                   <span>Expenses:</span>
                   <span className={styles.negative}>
@@ -482,12 +511,6 @@ const Expenses = () => {
                 <span className={styles.detailIcon}>📊</span>
               </div>
               <div className={styles.detailContent}>
-                <div className={styles.detailRow}>
-                  <span>Revenue:</span>
-                  <span className={styles.positive}>
-                    {formatCurrency(stats.monthlyRevenue)}
-                  </span>
-                </div>
                 <div className={styles.detailRow}>
                   <span>Expenses:</span>
                   <span className={styles.negative}>
@@ -514,12 +537,6 @@ const Expenses = () => {
                 <span className={styles.detailIcon}>📆</span>
               </div>
               <div className={styles.detailContent}>
-                <div className={styles.detailRow}>
-                  <span>Revenue:</span>
-                  <span className={styles.positive}>
-                    {formatCurrency(stats.yearlyRevenue)}
-                  </span>
-                </div>
                 <div className={styles.detailRow}>
                   <span>Expenses:</span>
                   <span className={styles.negative}>
@@ -548,18 +565,12 @@ const Expenses = () => {
       <div className={styles.categoryBreakdown}>
         <h3>Expense Categories</h3>
         <div className={styles.categoryGrid}>
-          {filteredExpenses.reduce((acc, expense) => {
-            const type = expense.type || "Other";
-            acc[type] = (acc[type] || 0) + (expense.amount || 0);
-            return acc;
-          }, {}) &&
-            Object.entries(
-              filteredExpenses.reduce((acc, expense) => {
-                const type = expense.type || "Other";
-                acc[type] = (acc[type] || 0) + (expense.amount || 0);
-                return acc;
-              }, {})
-            ).map(([category, amount]) => (
+          {Object.entries(stats.expenseBreakdown || {}).length === 0 ? (
+            <p className={styles.noData}>
+              No expense categories for this period.
+            </p>
+          ) : (
+            Object.entries(stats.expenseBreakdown).map(([category, amount]) => (
               <div key={category} className={styles.categoryCard}>
                 <div className={styles.categoryHeader}>
                   <h4>{category}</h4>
@@ -586,7 +597,8 @@ const Expenses = () => {
                   % of total expenses
                 </p>
               </div>
-            ))}
+            ))
+          )}
         </div>
       </div>
 

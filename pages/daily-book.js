@@ -12,13 +12,7 @@ const DailyBook = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
-  const [services, setServices] = useState([
-    "Water Tank Cleaning",
-    "Pest Control",
-    "Motor Repairing & Rewinding",
-  ]);
-
-  // Form state
+  const [services, setServices] = useState([]);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split("T")[0],
     property: "",
@@ -28,17 +22,8 @@ const DailyBook = () => {
     service: "",
     amount: "",
     remarks: "",
-    // Service-specific fields
-    ohTank: "",
-    ugTank: "",
-    sintexTank: "",
-    numberOfFloors: "",
-    wing: "",
-    treatment: "",
-    apartment: "",
-    workDescription: "",
+    serviceDetails: {}, // Dynamic service details
   });
-
   const [existingProperties, setExistingProperties] = useState([]);
   const [filteredProperties, setFilteredProperties] = useState([]);
   const [showPropertySuggestions, setShowPropertySuggestions] = useState(false);
@@ -89,7 +74,7 @@ const DailyBook = () => {
       if (response.ok) {
         const data = await response.json();
         if (data.services) {
-          setServices(data.services.map((s) => s.name));
+          setServices(data.services.filter((s) => s.active)); // Store full service objects, only active ones
         }
       }
     } catch (error) {
@@ -110,10 +95,35 @@ const DailyBook = () => {
   };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
+
+    // Handle service type change - reset service details when service type changes
+    if (name === "service") {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+        serviceDetails: {}, // Reset service details when service type changes
+      }));
+      return;
+    }
+
+    // Handle service detail fields
+    if (name.startsWith("serviceDetail_")) {
+      const fieldId = name.replace("serviceDetail_", "");
+      setFormData((prev) => ({
+        ...prev,
+        serviceDetails: {
+          ...prev.serviceDetails,
+          [fieldId]: type === "checkbox" ? checked : value,
+        },
+      }));
+      return;
+    }
+
+    // Handle regular form fields
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: type === "checkbox" ? checked : value,
     }));
 
     // Handle property name autocomplete
@@ -158,24 +168,8 @@ const DailyBook = () => {
       };
 
       // Add service-specific fields
-      if (formData.service === "Water Tank Cleaning") {
-        entryData.serviceDetails = {
-          ohTank: formData.ohTank,
-          ugTank: formData.ugTank,
-          sintexTank: formData.sintexTank,
-          numberOfFloors: formData.numberOfFloors,
-          wing: formData.wing,
-        };
-      } else if (formData.service === "Pest Control") {
-        entryData.serviceDetails = {
-          treatment: formData.treatment,
-          apartment: formData.apartment,
-        };
-      } else if (formData.service === "Motor Repairing & Rewinding") {
-        entryData.serviceDetails = {
-          workDescription: formData.workDescription,
-        };
-      }
+      // Add dynamic service details
+      entryData.serviceDetails = formData.serviceDetails;
 
       const response = await fetch("/api/daily-book", {
         method: "POST",
@@ -202,14 +196,7 @@ const DailyBook = () => {
         service: "",
         amount: "",
         remarks: "",
-        ohTank: "",
-        ugTank: "",
-        sintexTank: "",
-        numberOfFloors: "",
-        wing: "",
-        treatment: "",
-        apartment: "",
-        workDescription: "",
+        serviceDetails: {},
       });
       setShowForm(false);
       fetchData();
@@ -271,122 +258,143 @@ const DailyBook = () => {
   };
 
   const renderServiceSpecificFields = () => {
-    switch (formData.service) {
-      case "Water Tank Cleaning":
-        return (
-          <div className={styles.serviceFields}>
-            <h4>Water Tank Cleaning Details</h4>
-            <div className={styles.formRow}>
-              <div className={styles.formGroup}>
-                <label>OH Tank</label>
-                <input
-                  type="text"
-                  name="ohTank"
-                  value={formData.ohTank}
-                  onChange={handleInputChange}
-                  placeholder="OH Tank details"
-                />
-              </div>
-              <div className={styles.formGroup}>
-                <label>UG Tank</label>
-                <input
-                  type="text"
-                  name="ugTank"
-                  value={formData.ugTank}
-                  onChange={handleInputChange}
-                  placeholder="UG Tank details"
-                />
-              </div>
-            </div>
-            <div className={styles.formRow}>
-              <div className={styles.formGroup}>
-                <label>Sintex Tank</label>
-                <input
-                  type="text"
-                  name="sintexTank"
-                  value={formData.sintexTank}
-                  onChange={handleInputChange}
-                  placeholder="Sintex Tank details"
-                />
-              </div>
-              <div className={styles.formGroup}>
-                <label>Number of Floors</label>
-                <input
-                  type="number"
-                  name="numberOfFloors"
-                  value={formData.numberOfFloors}
-                  onChange={handleInputChange}
-                  placeholder="Number of floors"
-                />
-              </div>
-            </div>
-            <div className={styles.formGroup}>
-              <label>Wing</label>
-              <input
-                type="text"
-                name="wing"
-                value={formData.wing}
-                onChange={handleInputChange}
-                placeholder="Wing details"
-              />
-            </div>
-          </div>
-        );
+    const selectedService = services.find(
+      (service) => service.name === formData.service
+    );
 
-      case "Pest Control":
-        return (
-          <div className={styles.serviceFields}>
-            <h4>Pest Control Details</h4>
-            <div className={styles.formRow}>
-              <div className={styles.formGroup}>
-                <label>Treatment</label>
-                <input
-                  type="text"
-                  name="treatment"
-                  value={formData.treatment}
-                  onChange={handleInputChange}
-                  placeholder="e.g., Cockroach / Termite / Bed Bugs"
-                />
-              </div>
-              <div className={styles.formGroup}>
-                <label>Apartment</label>
-                <select
-                  name="apartment"
-                  value={formData.apartment}
-                  onChange={handleInputChange}
-                >
-                  <option value="">Select apartment type</option>
-                  <option value="1RK">1RK</option>
-                  <option value="1BHK">1BHK</option>
-                  <option value="2BHK">2BHK</option>
-                  <option value="3BHK">3BHK</option>
-                  <option value="4BHK">4BHK</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        );
-
-      case "Motor Repairing & Rewinding":
-        return (
-          <div className={styles.serviceFields}>
-            <h4>Motor Repairing & Rewinding Details</h4>
-            <div className={styles.formGroup}>
-              <label>Describe the Work</label>
-              <textarea
-                name="workDescription"
-                value={formData.workDescription}
-                onChange={handleInputChange}
-                placeholder="Describe the work performed"
-                rows="4"
-              />
-            </div>
-          </div>
-        );
-
-      default:
-        return null;
+    if (
+      !selectedService ||
+      !selectedService.subFields ||
+      selectedService.subFields.length === 0
+    ) {
+      return null;
     }
+
+    // Sort sub-fields by order
+    const sortedFields = [...selectedService.subFields].sort(
+      (a, b) => (a.order || 0) - (b.order || 0)
+    );
+
+    return (
+      <div className={styles.serviceFields}>
+        <h4>{selectedService.name} Details</h4>
+        {sortedFields.map((field) => {
+          const fieldName = `serviceDetail_${field.id}`;
+          const fieldValue =
+            formData.serviceDetails[field.id] || field.defaultValue || "";
+
+          switch (field.type) {
+            case "input":
+              return (
+                <div key={field.id} className={styles.formGroup}>
+                  <label>
+                    {field.label}{" "}
+                    {field.required && (
+                      <span className={styles.required}>*</span>
+                    )}
+                  </label>
+                  <input
+                    type="text"
+                    name={fieldName}
+                    value={fieldValue}
+                    onChange={handleInputChange}
+                    required={field.required}
+                    placeholder={field.placeholder || ""}
+                  />
+                </div>
+              );
+
+            case "number":
+              return (
+                <div key={field.id} className={styles.formGroup}>
+                  <label>
+                    {field.label}{" "}
+                    {field.required && (
+                      <span className={styles.required}>*</span>
+                    )}
+                  </label>
+                  <input
+                    type="number"
+                    name={fieldName}
+                    value={fieldValue}
+                    onChange={handleInputChange}
+                    required={field.required}
+                    placeholder={field.placeholder || ""}
+                    min="0"
+                  />
+                </div>
+              );
+
+            case "select":
+              return (
+                <div key={field.id} className={styles.formGroup}>
+                  <label>
+                    {field.label}{" "}
+                    {field.required && (
+                      <span className={styles.required}>*</span>
+                    )}
+                  </label>
+                  <select
+                    name={fieldName}
+                    value={fieldValue}
+                    onChange={handleInputChange}
+                    required={field.required}
+                  >
+                    <option value="">Select {field.label}</option>
+                    {field.options &&
+                      field.options.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              );
+
+            case "textarea":
+              return (
+                <div key={field.id} className={styles.formGroup}>
+                  <label>
+                    {field.label}{" "}
+                    {field.required && (
+                      <span className={styles.required}>*</span>
+                    )}
+                  </label>
+                  <textarea
+                    name={fieldName}
+                    value={fieldValue}
+                    onChange={handleInputChange}
+                    required={field.required}
+                    placeholder={field.placeholder || ""}
+                    rows="4"
+                  />
+                </div>
+              );
+
+            case "checkbox":
+              return (
+                <div key={field.id} className={styles.formGroup}>
+                  <label className={styles.checkboxLabel}>
+                    <input
+                      type="checkbox"
+                      name={fieldName}
+                      checked={!!fieldValue}
+                      onChange={handleInputChange}
+                    />
+                    {field.label}{" "}
+                    {field.required && (
+                      <span className={styles.required}>*</span>
+                    )}
+                  </label>
+                </div>
+              );
+
+            default:
+              return null;
+          }
+        })}
+      </div>
+    );
   };
 
   if (loading) {
@@ -469,7 +477,9 @@ const DailyBook = () => {
                 ×
               </button>
             </div>
+
             <form onSubmit={handleSubmit} className={styles.form}>
+              {/* Row 1: Service Date + Client Name (aligned properly) */}
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
                   <label>
@@ -483,27 +493,7 @@ const DailyBook = () => {
                     required
                   />
                 </div>
-              </div>
 
-              <div className={styles.formRow}>
-                <div className={styles.formGroup}>
-                  <label>
-                    Service <span className={styles.required}>*</span>
-                  </label>
-                  <select
-                    name="service"
-                    value={formData.service}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    <option value="">Select service</option>
-                    {services.map((service) => (
-                      <option key={service} value={service}>
-                        {service}
-                      </option>
-                    ))}
-                  </select>
-                </div>
                 <div className={styles.formGroup}>
                   <label>
                     Property / Client Name{" "}
@@ -537,6 +527,7 @@ const DailyBook = () => {
                 </div>
               </div>
 
+              {/* Row 2: Service + Property */}
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
                   <label>
@@ -553,22 +544,6 @@ const DailyBook = () => {
                 </div>
                 <div className={styles.formGroup}>
                   <label>
-                    Contact Number <span className={styles.required}>*</span>
-                  </label>
-                  <input
-                    type="tel"
-                    name="contact"
-                    value={formData.contact}
-                    onChange={handleInputChange}
-                    placeholder="Contact number"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className={styles.formRow}>
-                <div className={styles.formGroup}>
-                  <label>
                     Location <span className={styles.required}>*</span>
                   </label>
                   <input
@@ -577,6 +552,23 @@ const DailyBook = () => {
                     value={formData.location}
                     onChange={handleInputChange}
                     placeholder="Location"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Row 3: Key Person + Contact Number */}
+              <div className={styles.formRow}>
+                <div className={styles.formGroup}>
+                  <label>
+                    Contact Number <span className={styles.required}>*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    name="contact"
+                    value={formData.contact}
+                    onChange={handleInputChange}
+                    placeholder="Contact number"
                     required
                   />
                 </div>
@@ -597,8 +589,27 @@ const DailyBook = () => {
                 </div>
               </div>
 
+              {/* Row 4: Location + Amount */}
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
+                  <label>
+                    Service <span className={styles.required}>*</span>
+                  </label>
+                  <select
+                    name="service"
+                    value={formData.service}
+                    onChange={handleInputChange}
+                    required
+                  >
+                    <option value="">Select service</option>
+                    {services.map((service) => (
+                      <option key={service._id} value={service.name}>
+                        {service.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className={styles.formGroup} style={{ flex: 1 }}>
                   <label>Remarks</label>
                   <input
                     type="text"
@@ -610,8 +621,13 @@ const DailyBook = () => {
                 </div>
               </div>
 
+              {/* Row 5: Remarks */}
+              <div className={styles.formRow}></div>
+
+              {/* Optional dynamic service fields */}
               {renderServiceSpecificFields()}
 
+              {/* Form Buttons */}
               <div className={styles.formActions}>
                 <button
                   type="button"

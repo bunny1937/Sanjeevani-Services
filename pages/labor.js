@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import styles from "./Labor.module.css";
 
 const Labor = () => {
@@ -51,24 +51,19 @@ const Labor = () => {
     status: "Active",
   });
 
-  useEffect(() => {
-    fetchLaborers();
-  }, []);
-
-  useEffect(() => {
-    filterLaborers();
-  }, [searchTerm, laborers]);
-
-  const fetchLaborers = async () => {
+  const fetchLaborers = useCallback(async () => {
     try {
       const response = await fetch("/api/laborers");
       const data = await response.json();
       setLaborers(data);
-      calculateStats(data);
+      calculateStats(data); // assumed to be defined
     } catch (error) {
       console.error("Error fetching laborers:", error);
     }
-  };
+  }, []);
+  useEffect(() => {
+    fetchLaborers(); // now safe with dependency
+  }, [fetchLaborers]);
 
   const calculateStats = (laborersData) => {
     const totalLaborers = laborersData.length;
@@ -97,7 +92,7 @@ const Labor = () => {
   };
   // Replace your existing filterLaborers function with this improved version:
 
-  const filterLaborers = () => {
+  const filterLaborers = useCallback(() => {
     if (!searchTerm || searchTerm.trim() === "") {
       setFilteredLaborers(laborers);
       return;
@@ -106,7 +101,6 @@ const Labor = () => {
     const searchTermLower = searchTerm.toLowerCase().trim();
 
     const filtered = laborers.filter((laborer) => {
-      // Safe checks for undefined/null values
       const name = laborer.name ? laborer.name.toLowerCase() : "";
       const phone = laborer.phone ? laborer.phone.toString() : "";
 
@@ -114,7 +108,10 @@ const Labor = () => {
     });
 
     setFilteredLaborers(filtered);
-  };
+  }, [laborers, searchTerm]);
+  useEffect(() => {
+    filterLaborers(); // now safe with dependency
+  }, [filterLaborers]);
 
   const handleAddLaborer = async (e) => {
     e.preventDefault();
