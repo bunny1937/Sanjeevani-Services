@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start --port 3000 --hostname 0.0.0.0",
     "lint": "next lint",
-    "seed": "node scripts/seed.js"
+    "seed": "node scripts/seed.js",
+    "prepare": "husky install"
   },
   "dependencies": {
     "csv-parser": "^3.2.0",
@@ -33,6 +34,7 @@
     "@types/react-dom": "^19.0.4",
     "eslint": "^9.23.0",
     "eslint-config-next": "^15.2.3",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "husky": "^8.0.0"
   }
 }

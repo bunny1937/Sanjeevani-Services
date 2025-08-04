@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import styles from "./Invoice.module.css";
+import Image from "next/image";
 
 export default function InvoicePage() {
   const { query } = useRouter();
@@ -556,7 +557,7 @@ export default function InvoicePage() {
         <div className={styles.controlSection}>
           <h3>Line Items</h3>
           {editable.customLineItems.map((item, index) => (
-            <div className={styles.lineItemEditor}>
+            <div className={styles.lineItemEditor} key={item.id || index}>
               <div className={styles.lineItemRow}>
                 <input
                   type="number"
@@ -754,18 +755,20 @@ export default function InvoicePage() {
       <div id="invoice-preview" className={styles.invoicePreview}>
         <div className={styles.invoiceHeader}>
           <div className={styles.companyInfo}>
-            <h1>Sanjeevani Services</h1>
+            <h1>संजीवनी</h1>
+            <span>SERVICES</span>
           </div>
           <div className={styles.invoiceTitle}>
-            <h2>QUOTE'</h2>
+            <h2>QUOTE&apos;</h2>
           </div>
         </div>
 
         <div className={styles.invoiceDetails}>
           <div className={styles.leftSection}>
             <p>
-              <strong>To,</strong>
+              <strong>To ,&apos;</strong>
             </p>
+
             <p>
               <strong>{property.keyPerson || property.name}</strong>
             </p>
@@ -849,18 +852,6 @@ export default function InvoicePage() {
                 <td>{item.amount?.toLocaleString("en-IN")}</td>
               </tr>
             ))}
-
-            {/* Add empty rows for spacing if needed */}
-            <tr>
-              <td
-                colSpan="5"
-                style={{
-                  height: "20px",
-                  borderLeft: "none",
-                  borderRight: "none",
-                }}
-              ></td>
-            </tr>
           </tbody>
         </table>
 
@@ -884,27 +875,22 @@ export default function InvoicePage() {
             </div>
           </div>
         </div>
-
-        <div className={styles.amountInWords}>
-          <p>
-            <strong>Amount In Words:</strong> {convertToWords(grossTotal)}{" "}
-            Rupees Only.
-          </p>
-        </div>
-
-        <div className={styles.contractDetails}>
-          <p>
-            <strong>Duration of Contract:</strong> {editable.contractDuration}
-          </p>
-        </div>
-
-        <div className={styles.scopeOfWork}>
-          <p>
-            <strong>Scope of Work:</strong>
-          </p>
-          <p>Identify Pest Activity & Assess the Extent of Infestation.</p>
-          <p>Comprehensive Inspection of Property to</p>
-          <p>Professional Pest Control Management Service:</p>
+        <div className={styles.amountInWordsContainer}>
+          <div className={styles.amountInWords}>
+            <p>
+              <strong>Amount In Words:</strong> {convertToWords(grossTotal)}{" "}
+              Rupees Only.
+            </p>
+          </div>
+          <div className={styles.signature}>
+            <p>
+              <strong>For Sanjeevani Services</strong>
+            </p>
+            <div className={styles.signatureSpace}></div>
+            <p>
+              <strong>Authorised Signatory.</strong>
+            </p>
+          </div>
         </div>
 
         {editable.includeSpecialNotes.includeSpecialTreatment && (
@@ -918,15 +904,30 @@ export default function InvoicePage() {
             <p>{editable.includeSpecialNotes.targetedPestsNote}</p>
           </div>
         )}
-
-        <div className={styles.generalNotes}>
-          <p>
-            <strong>NOTE:</strong>
-          </p>
-          <p>Frequency Mentioned Above in Accordance with the Treatment.</p>
-          <p>{editable.notes}</p>
+        <div className={styles.NotesContainer}>
+          <div className={styles.generalNotes}>
+            <p>
+              <strong>NOTE:</strong>
+            </p>
+            <div className={styles.contractDetails}>
+              <p>
+                <strong>Duration of Contract:</strong>{" "}
+                {editable.contractDuration}
+              </p>
+            </div>
+            <p>Frequency Mentioned Above in Accordance with the Treatment.</p>
+            <p>{editable.notes}</p>
+          </div>
+          <div className={styles.servicesImage}>
+            <Image
+              src="/services.png"
+              alt="Services"
+              width={300}
+              height={250}
+              className={styles.servicesImage}
+            />
+          </div>
         </div>
-
         <div className={styles.footer}>
           <div className={styles.companyDetails}>
             <p>
@@ -941,16 +942,6 @@ export default function InvoicePage() {
             <p>
               Address: Sanjeevani Services, Shivalik Apt. Lokmanya Nagar, Thane
               - 400606
-            </p>
-          </div>
-
-          <div className={styles.signature}>
-            <p>
-              <strong>For Sanjeevani Services</strong>
-            </p>
-            <div className={styles.signatureSpace}></div>
-            <p>
-              <strong>Authorised Signatory.</strong>
             </p>
           </div>
         </div>

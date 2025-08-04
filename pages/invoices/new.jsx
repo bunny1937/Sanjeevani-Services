@@ -671,7 +671,7 @@ export default function NewInvoicePage() {
             <p className={styles.servicesText}>SERVICES</p>
           </div>
           <div className={styles.invoiceTitle}>
-            <h2>QUOTE'</h2>
+            <h2>QUOTE`&apos;`</h2>`
           </div>
         </div>
 

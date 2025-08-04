@@ -993,11 +993,11 @@ const PropertiesClient = () => {
                         }
                       }}
                     />
-                    Mark client as "On Hold" (no service date set)
+                    Mark client as &quot;On Hold&quot; (no service date set)
                   </label>
                   <small>
-                    Leave empty to mark client as "On Hold". This will be the
-                    due date for the service reminder when set.
+                    Leave empty to mark client as &quot;On Hold&quot;. This will
+                    be the due date for the service reminder when set.
                   </small>
                   <small>
                     On Hold clients will not generate automatic reminders until
