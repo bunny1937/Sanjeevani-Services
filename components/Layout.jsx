@@ -1,3 +1,4 @@
+// components/Layout.jsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -46,37 +47,76 @@ const Layout = ({ children, user }) => {
     },
   ];
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await fetch("/api/reminders");
-        if (response.ok) {
-          const data = await response.json();
-          if (data.stats) {
-            setReminderStats(data.stats);
-          }
+  // Check if current page is auth page
+  const isAuthPage = router.pathname.startsWith("/auth/");
 
-          // Get recent reminders for notification popup
-          const recent = [
-            ...(data.overdueReminders || []).slice(0, 3),
-            ...(data.reminders || []).slice(0, 3),
-            ...(data.scheduledReminders || []).slice(0, 2),
-          ].slice(0, 5);
-          setRecentReminders(recent);
+  useEffect(() => {
+    // Only fetch stats if user is authenticated and not on auth page
+    if (status === "authenticated" && !isAuthPage) {
+      const fetchStats = async () => {
+        try {
+          const response = await fetch("/api/reminders");
+          if (response.ok) {
+            const data = await response.json();
+            if (data.stats) {
+              setReminderStats(data.stats);
+            }
+
+            // Get recent reminders for notification popup
+            const recent = [
+              ...(data.overdueReminders || []).slice(0, 3),
+              ...(data.reminders || []).slice(0, 3),
+              ...(data.scheduledReminders || []).slice(0, 2),
+            ].slice(0, 5);
+            setRecentReminders(recent);
+          }
+        } catch (error) {
+          console.error("Error fetching reminder stats:", error);
         }
-      } catch (error) {
-        console.error("Error fetching reminder stats:", error);
-      }
-    };
-    fetchStats();
-    // Optionally, refetch stats periodically
-    const interval = setInterval(fetchStats, 60000); // Every minute
-    return () => clearInterval(interval);
-  }, []);
+      };
+
+      fetchStats();
+      // Optionally, refetch stats periodically
+      const interval = setInterval(fetchStats, 60000); // Every minute
+      return () => clearInterval(interval);
+    }
+  }, [status, isAuthPage]);
+
   const handleNavItemClick = () => {
     setSidebarOpen(false);
   };
 
+  // If on auth page, render minimal layout
+  if (isAuthPage) {
+    return (
+      <div className={styles.authLayoutContainer}>
+        <main className={styles.authPageContent}>{children}</main>
+      </div>
+    );
+  }
+
+  // If not authenticated and not on auth page, don't render full layout
+  if (status === "unauthenticated") {
+    return (
+      <div className={styles.authLayoutContainer}>
+        <main className={styles.authPageContent}>{children}</main>
+      </div>
+    );
+  }
+
+  // If still loading session, show minimal layout
+  if (status === "loading") {
+    return (
+      <div className={styles.loadingContainer}>
+        <div className={styles.spinner}>
+          <div className={styles.spinnerRing}></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Full authenticated layout
   return (
     <>
       {/* Sidebar Overlay */}
@@ -94,7 +134,7 @@ const Layout = ({ children, user }) => {
               <Image
                 src="/logo.jpg"
                 alt="Sanjeevani Logo"
-                width={50} // adjust size
+                width={50}
                 height={50}
                 className="styles.logoIcon"
               />
@@ -300,22 +340,16 @@ const Layout = ({ children, user }) => {
 
               {/* Profile Section */}
               <div className={styles.profileBox}>
-                {router.pathname === "/auth/signin" ? (
-                  <span className={styles.welcomeText}>Sign in</span>
-                ) : (
-                  <>
-                    <div className={styles.avatar}>👤</div>
-                    <span className={styles.welcomeText}>
-                      Welcome, {session?.user?.name || "User"}
-                    </span>
-                    <button
-                      className={styles.logoutButton}
-                      onClick={() => signOut({ callbackUrl: "/auth/signin" })}
-                    >
-                      Logout
-                    </button>
-                  </>
-                )}
+                <div className={styles.avatar}>👤</div>
+                <span className={styles.welcomeText}>
+                  Welcome, {session?.user?.name || "User"}
+                </span>
+                <button
+                  className={styles.logoutButton}
+                  onClick={() => signOut({ callbackUrl: "/auth/signin" })}
+                >
+                  Logout
+                </button>
               </div>
             </div>
           </div>
