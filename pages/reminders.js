@@ -320,7 +320,11 @@ const Reminders = () => {
     try {
       const date = new Date(dateValue);
       if (isNaN(date.getTime())) return "Invalid Date";
-      return date.toLocaleDateString("en-GB");
+      return date.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
     } catch (e) {
       return "Invalid Date";
     }

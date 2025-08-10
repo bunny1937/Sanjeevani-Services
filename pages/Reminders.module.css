@@ -772,10 +772,6 @@
     padding: 1rem;
   }
 
-  .statsGrid {
-    grid-template-columns: 1fr;
-  }
-
   .tableHeader {
     padding: 1rem;
   }

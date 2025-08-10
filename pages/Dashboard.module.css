@@ -357,15 +357,6 @@
     gap: 1rem;
     padding: 1rem;
   }
-
-  .mainStatsGrid,
-  .serviceStatsGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .financialStats {
-    grid-template-columns: 1fr;
-  }
 }
 @media (max-width: 480px) {
   .headerContent h1 {

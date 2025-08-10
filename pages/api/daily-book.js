@@ -17,7 +17,7 @@ const PropertySchema = new mongoose.Schema(
       ohTank: String,
       ugTank: String,
       sintexTank: String,
-      numberOfFloors: Number,
+      numberOfFloors: String,
       wing: String,
       treatment: String,
       apartment: String,
@@ -30,6 +30,8 @@ const PropertySchema = new mongoose.Schema(
     lastServiceDate: Date,
     status: { type: String, default: "Active" },
     remarks: String,
+    // Add autoGenerateReminders field to PropertySchema if it's not already there
+    autoGenerateReminders: { type: Boolean, default: true },
   },
   { timestamps: true }
 );
@@ -90,7 +92,7 @@ const ReminderSchema = new mongoose.Schema(
     nextReminderTime: { type: Date, required: true },
     status: {
       type: String,
-      enum: ["pending", "called", "scheduled", "completed"],
+      enum: ["pending", "called", "scheduled", "completed", "on_hold"], // Added on_hold
       default: "scheduled",
     },
     called: { type: Boolean, default: false },
@@ -116,6 +118,7 @@ const ReminderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Ensure models are not re-compiled if already defined
 const DailyBook =
   mongoose.models.DailyBook ||
   mongoose.model("DailyBook", DailyBookSchema, "dailybooks");
@@ -194,7 +197,6 @@ export default async function handler(req, res) {
 
       if (!existingProperty) {
         // Create new property automatically
-        // Create new property automatically
         const newProperty = new Property({
           name: entryData.property,
           keyPerson: entryData.keyPerson,
@@ -210,13 +212,14 @@ export default async function handler(req, res) {
           lastServiceDate: serviceDate,
           status: "Active",
           remarks: `Auto-created from daily book entry on ${new Date().toLocaleDateString()}`,
+          isOnHold: false, // New properties from daily book are active
         });
 
         await newProperty.save();
         existingProperty = newProperty;
         console.log(`New property created: ${entryData.property}`);
       } else {
-        // Update existing property stats
+        // Update existing property stats and details
         const updateData = {
           $inc: {
             totalJobs: 1,
@@ -224,6 +227,14 @@ export default async function handler(req, res) {
           },
           $set: {
             lastServiceDate: serviceDate,
+            keyPerson: entryData.keyPerson,
+            contact: entryData.contact,
+            location: entryData.location,
+            serviceType: entryData.service, // Update serviceType if it changed
+            amount: entryData.amount || 0, // Update amount if it changed
+            serviceDate: serviceDate, // Update serviceDate
+            serviceDetails: entryData.serviceDetails || {}, // Update serviceDetails
+            isOnHold: false, // Ensure property is not on hold if a service date is provided
           },
         };
 
@@ -269,11 +280,12 @@ export default async function handler(req, res) {
       const entryData = req.body;
 
       // Convert date string to Date object
+      let updatedServiceDate;
       if (entryData.date) {
         try {
-          entryData.date = new Date(entryData.date);
+          updatedServiceDate = new Date(entryData.date);
           // Validate date
-          if (isNaN(entryData.date.getTime())) {
+          if (isNaN(updatedServiceDate.getTime())) {
             return res.status(400).json({
               message: "Invalid date format",
             });
@@ -285,15 +297,75 @@ export default async function handler(req, res) {
         }
       }
 
-      const updatedEntry = await DailyBook.findByIdAndUpdate(id, entryData, {
-        new: true,
-      });
-
-      if (!updatedEntry) {
+      // Find the original daily book entry to get the property name
+      const originalEntry = await DailyBook.findById(id);
+      if (!originalEntry) {
         return res.status(404).json({ message: "Entry not found" });
       }
 
-      return res.status(200).json(updatedEntry);
+      // Find the corresponding property
+      let existingProperty = await Property.findOne({
+        name: { $regex: new RegExp(`^${originalEntry.property}$`, "i") },
+      });
+
+      if (!existingProperty) {
+        // Handle the case where the property is not found
+        return res.status(404).json({
+          message: `Property "${originalEntry.property}" not found. Cannot update associated records.`,
+        });
+      }
+
+      // Update the property details
+      const propertyUpdateData = {
+        keyPerson: entryData.keyPerson,
+        contact: entryData.contact,
+        location: entryData.location,
+        serviceType: entryData.service,
+        amount: entryData.amount || 0,
+        serviceDetails: entryData.serviceDetails || {},
+        // Update serviceDate if it changed in the daily book entry
+        serviceDate: updatedServiceDate,
+        isOnHold: false, // If a service date is provided, it's not on hold
+      };
+
+      // Check if services is defined before accessing it
+      if (
+        existingProperty.services &&
+        !existingProperty.services.includes(entryData.service) &&
+        entryData.service
+      ) {
+        propertyUpdateData.$addToSet = { services: entryData.service };
+      }
+
+      await Property.findByIdAndUpdate(
+        existingProperty._id,
+        propertyUpdateData,
+        {
+          new: true,
+        }
+      );
+      console.log(
+        `Property "${existingProperty.name}" updated from daily book edit.`
+      );
+
+      // Update the daily book entry itself
+      const updatedEntry = await DailyBook.findByIdAndUpdate(
+        id,
+        { ...entryData, date: updatedServiceDate }, // Ensure date is Date object
+        { new: true }
+      );
+
+      // Handle reminder for the edited service
+      await handleReminderForCompletedService(
+        existingProperty,
+        entryData,
+        updatedServiceDate
+      );
+
+      return res.status(200).json({
+        updatedEntry,
+        message: "Entry and associated property/reminder updated successfully",
+      });
     }
 
     if (req.method === "DELETE") {
@@ -329,11 +401,19 @@ async function handleReminderForCompletedService(
     const nextScheduledDate = new Date(serviceDate);
     nextScheduledDate.setMonth(nextScheduledDate.getMonth() + 4);
 
-    // Check if there's an existing active reminder for this property and service
+    // Find an existing active reminder for this property and service type
+    // We look for non-completed reminders, or completed ones that were very recent (e.g., within the last day)
+    // to avoid creating duplicates if the daily book entry is added/edited quickly after a service.
     const existingReminder = await Reminder.findOne({
       propertyId: property._id,
       serviceType: entryData.service,
-      completed: false,
+      $or: [
+        { completed: false },
+        {
+          completed: true,
+          updatedAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+        }, // Check for recently completed
+      ],
     });
 
     if (existingReminder) {
@@ -347,7 +427,7 @@ async function handleReminderForCompletedService(
           called: false,
           scheduled: true,
           completed: false,
-          isNewService: false, // FIXED: Set to false since service was actually performed
+          isNewService: false, // Set to false since service was actually performed
           escalationLevel: 0,
           callAttempts: 0,
           notificationSent: false,
@@ -380,7 +460,7 @@ async function handleReminderForCompletedService(
         called: false,
         scheduled: true,
         completed: false,
-        isNewService: false, // FIXED: Set to false since service was actually performed
+        isNewService: false, // Set to false since service was actually performed
         escalationLevel: 0,
         callAttempts: 0,
         notificationSent: false,

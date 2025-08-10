@@ -7,6 +7,8 @@ import sharedStyles from "./invoices/sharedstyles.module.css";
 
 const PropertiesClient = () => {
   const [properties, setProperties] = useState([]);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingPropertyId, setEditingPropertyId] = useState(null);
   const [services, setServices] = useState([]); // New state for services
   const [stats, setStats] = useState({
     totalProperties: 0,
@@ -91,6 +93,27 @@ const PropertiesClient = () => {
     } catch (error) {
       console.error("Error fetching services:", error);
     }
+  };
+
+  const handleEditProperty = (property) => {
+    setIsEditing(true);
+    setEditingPropertyId(property._id);
+
+    setFormData({
+      name: property.name || "",
+      keyPerson: property.keyPerson || "",
+      contact: property.contact || "",
+      location: property.location || "",
+      area: property.area || "",
+      serviceType: property.serviceType || "",
+      amount: property.amount || "",
+
+      serviceDate: property.serviceDateISO || "",
+      customLocation: "",
+      serviceDetails: property.serviceDetails || {},
+    });
+
+    setIsModalOpen(true);
   };
 
   // Get the selected service object
@@ -306,10 +329,18 @@ const PropertiesClient = () => {
       property.amount,
       property.serviceDate,
       property.createdAt
-        ? new Date(property.createdAt).toLocaleDateString()
+        ? new Date(property.createdAt).toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          })
         : "",
       property.updatedAt
-        ? new Date(property.updatedAt).toLocaleDateString()
+        ? new Date(property.updatedAt).toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          })
         : "",
     ]);
 
@@ -345,6 +376,8 @@ const PropertiesClient = () => {
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
+    setIsEditing(false);
+    setEditingPropertyId(null);
     setFormData({
       name: "",
       keyPerson: "",
@@ -400,7 +433,6 @@ const PropertiesClient = () => {
     setIsSubmitting(true);
 
     try {
-      // Determine the final location value
       let finalLocation = formData.location;
       if (formData.location === "Other/Manual" && formData.customLocation) {
         finalLocation = formData.customLocation;
@@ -414,44 +446,43 @@ const PropertiesClient = () => {
         area: formData.area,
         serviceType: formData.serviceType,
         amount: parseFloat(formData.amount),
-        serviceDate:
-          formData.serviceDate && formData.serviceDate.trim() !== ""
-            ? formData.serviceDate
-            : null,
-        isOnHold: !formData.serviceDate || formData.serviceDate === "",
-        // Dynamic service details
+        serviceDate: formData.serviceDate?.trim() || null,
+        isOnHold: !formData.serviceDate,
         serviceDetails: formData.serviceDetails,
       };
 
-      const response = await fetch("/api/properties", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+      const url = isEditing
+        ? `/api/properties?id=${editingPropertyId}`
+        : "/api/properties";
+
+      const response = await fetch(url, {
+        method: isEditing ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(propertyData),
       });
 
       if (response.ok) {
-        const newProperty = await response.json();
-
-        // Refresh the data to get updated stats
         await fetchPropertiesAndStats();
-
+        setIsEditing(false);
+        setEditingPropertyId(null);
         handleCloseModal();
-        const isOnHold = !formData.serviceDate || formData.serviceDate === "";
         alert(
-          isOnHold
-            ? "Property added successfully and marked as 'On Hold'. No automatic reminder created until service date is set."
-            : "Property added successfully! A reminder has been created automatically."
+          isEditing
+            ? "Property updated successfully!"
+            : "Property added successfully!"
         );
       } else {
-        throw new Error("Failed to add property");
+        throw new Error(
+          isEditing ? "Failed to update property" : "Failed to add property"
+        );
       }
     } catch (error) {
-      console.error("Error adding property:", error);
-      alert("Failed to add property. Please try again.");
+      console.error(error);
+      alert(error.message);
     } finally {
       setIsSubmitting(false);
+      setIsEditing(false);
+      setEditingPropertyId(null);
     }
   };
 
@@ -809,6 +840,13 @@ const PropertiesClient = () => {
                           View
                         </button>
                         <button
+                          className={styles.editBtn}
+                          onClick={() => handleEditProperty(property)}
+                        >
+                          Edit
+                        </button>
+
+                        <button
                           className={styles.deleteBtn}
                           onClick={() =>
                             handleDeleteSingle(property._id, property.name)
@@ -832,7 +870,7 @@ const PropertiesClient = () => {
         <div className={styles.modalOverlay} onClick={handleBackdropClick}>
           <div className={styles.modalContent}>
             <div className={styles.modalHeader}>
-              <h2>Add New Property</h2>
+              <h2>{isEditing ? "Edit Property" : "Add New Property"}</h2>
               <button
                 className={styles.closeButton}
                 onClick={handleCloseModal}
@@ -1081,7 +1119,13 @@ const PropertiesClient = () => {
                   className={styles.submitButton}
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? "Adding..." : "Add Property"}
+                  {isSubmitting
+                    ? isEditing
+                      ? "Updating..."
+                      : "Adding..."
+                    : isEditing
+                    ? "Update Property"
+                    : "Add Property"}
                 </button>
               </div>
             </form>

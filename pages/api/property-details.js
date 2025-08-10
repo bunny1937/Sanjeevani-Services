@@ -12,7 +12,8 @@ const PropertySchema = new mongoose.Schema(
     area: String,
     serviceType: String,
     amount: Number,
-    serviceDate: { type: Date, required: true },
+    isOnHold: { type: Boolean, default: false },
+    serviceDate: { type: Date, required: false, default: null },
     serviceDetails: {
       ohTank: String,
       ugTank: String,
@@ -54,7 +55,7 @@ const ReminderSchema = new mongoose.Schema(
     nextReminderTime: { type: Date, required: true },
     status: {
       type: String,
-      enum: ["pending", "called", "scheduled", "completed"],
+      enum: ["pending", "called", "scheduled", "completed", "on_hold"],
       default: "scheduled",
     },
     called: { type: Boolean, default: false },
@@ -152,6 +153,15 @@ export default async function handler(req, res) {
         property: {
           ...property.toObject(),
           serviceDate: property.serviceDate
+            ? property.serviceDate.toLocaleDateString("en-GB", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              })
+            : property.isOnHold
+            ? "On Hold"
+            : null,
+          serviceDateISO: property.serviceDate
             ? property.serviceDate.toISOString().split("T")[0]
             : null,
         },

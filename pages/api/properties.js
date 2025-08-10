@@ -171,15 +171,22 @@ export default async function handler(req, res) {
       };
 
       // Format properties for display
-      // Format properties for display
       const formattedProperties = properties.map((property) => ({
         ...property,
-        // Ensure serviceDate is formatted or explicitly "On Hold"
+        // Display formatted date
         serviceDate: property.serviceDate
-          ? new Date(property.serviceDate).toLocaleDateString("en-GB")
+          ? new Date(property.serviceDate).toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            })
           : property.isOnHold
-          ? "On Hold" // Display "On Hold" if isOnHold is true and serviceDate is null
-          : null, // Otherwise, it's truly null/not set
+          ? "On Hold"
+          : null,
+        // Raw ISO date for form inputs (fixes timezone issue)
+        serviceDateISO: property.serviceDate
+          ? new Date(property.serviceDate).toISOString().split("T")[0]
+          : null,
         statusDisplay: property.isOnHold ? "On Hold" : "Active",
       }));
       return res.status(200).json({ properties: formattedProperties, stats });
@@ -220,7 +227,14 @@ export default async function handler(req, res) {
         );
       } else {
         try {
-          propertyData.serviceDate = new Date(serviceDate);
+          // Create date at local midnight to avoid timezone issues
+          const dateParts = serviceDate.split("-");
+          const localDate = new Date(
+            dateParts[0],
+            dateParts[1] - 1,
+            dateParts[2]
+          );
+          propertyData.serviceDate = localDate;
           propertyData.isOnHold = false;
           console.log(
             "Property will be created with service date:",
@@ -255,6 +269,179 @@ export default async function handler(req, res) {
           ? "Property created and placed on hold. You can set the service date later."
           : "Property and reminder created successfully.",
       });
+    }
+
+    if (req.method === "PUT") {
+      const { id } = req.query || req.body; // property ID from URL or body
+      const {
+        name,
+        keyPerson,
+        contact,
+        location,
+        area,
+        serviceType,
+        amount,
+        serviceDate,
+        serviceDetails,
+      } = req.body;
+
+      if (!id) {
+        return res.status(400).json({ message: "Property ID is required" });
+      }
+
+      try {
+        // Get the existing property to preserve unchanged serviceDate
+        const existingProperty = await Property.findById(id);
+        if (!existingProperty) {
+          return res.status(404).json({ message: "Property not found" });
+        }
+
+        let updateData = {
+          name: name?.trim(),
+          keyPerson: keyPerson?.trim(),
+          contact: contact?.trim(),
+          location: location?.trim(),
+          area: area?.trim() || "",
+          serviceType: serviceType?.trim(),
+          amount: parseFloat(amount),
+          serviceDetails: serviceDetails || {},
+          serviceDate: existingProperty.serviceDate, // Preserve existing date by default
+          isOnHold: existingProperty.isOnHold, // Preserve existing status by default
+        };
+
+        // Only update serviceDate if it was actually changed in the form
+        if (serviceDate !== undefined) {
+          if (!serviceDate || serviceDate.trim() === "") {
+            updateData.serviceDate = null;
+            updateData.isOnHold = true;
+          } else {
+            try {
+              // Create date at local midnight to avoid timezone issues
+              const dateParts = serviceDate.split("-");
+              const localDate = new Date(
+                dateParts[0],
+                dateParts[1] - 1,
+                dateParts[2]
+              );
+              updateData.serviceDate = localDate;
+              updateData.isOnHold = false;
+            } catch (error) {
+              console.error("Invalid service date provided:", serviceDate);
+              // Keep existing date if new date is invalid
+              updateData.serviceDate = existingProperty.serviceDate;
+              updateData.isOnHold = existingProperty.isOnHold;
+            }
+          }
+        }
+
+        const updatedProperty = await Property.findByIdAndUpdate(
+          id,
+          updateData,
+          { new: true }
+        );
+
+        // Update ALL associated reminders for this property
+        if (updateData.isOnHold) {
+          // If property is put on hold, update all non-completed reminders to on_hold status
+          await Reminder.updateMany(
+            { propertyId: id, completed: false },
+            {
+              $set: {
+                propertyName: updateData.name,
+                keyPerson: updateData.keyPerson,
+                contact: updateData.contact,
+                location: updateData.location,
+                serviceType: updateData.serviceType,
+                serviceDetails: updateData.serviceDetails,
+                scheduledDate: null,
+                nextReminderTime: null,
+                status: "on_hold",
+                scheduled: false,
+                updatedAt: new Date(),
+              },
+            }
+          );
+        } else {
+          // Property is active - find the most recent active reminder
+          const activeReminder = await Reminder.findOne({
+            propertyId: id,
+            completed: false,
+          }).sort({ createdAt: -1 });
+
+          if (activeReminder) {
+            // Calculate new scheduled date based on the service date change
+            let newScheduledDate = updateData.serviceDate;
+
+            // If this reminder had a previous scheduled date and it was calculated from service date + 4 months,
+            // we need to recalculate it
+            if (activeReminder.lastServiceDate) {
+              // This is a follow-up reminder, keep the existing scheduling logic
+              // Only update property details, not the scheduled date
+              await Reminder.findByIdAndUpdate(activeReminder._id, {
+                $set: {
+                  propertyName: updateData.name,
+                  keyPerson: updateData.keyPerson,
+                  contact: updateData.contact,
+                  location: updateData.location,
+                  serviceType: updateData.serviceType,
+                  serviceDetails: updateData.serviceDetails,
+                  updatedAt: new Date(),
+                },
+              });
+            } else {
+              // This is the initial reminder, update the scheduled date to match the new service date
+              await Reminder.findByIdAndUpdate(activeReminder._id, {
+                $set: {
+                  propertyName: updateData.name,
+                  keyPerson: updateData.keyPerson,
+                  contact: updateData.contact,
+                  location: updateData.location,
+                  serviceType: updateData.serviceType,
+                  serviceDetails: updateData.serviceDetails,
+                  scheduledDate: newScheduledDate,
+                  nextReminderTime: newScheduledDate,
+                  status: "scheduled",
+                  scheduled: true,
+                  updatedAt: new Date(),
+                },
+              });
+            }
+          } else {
+            // No active reminder exists, create a new one
+            await Reminder.create({
+              propertyId: id,
+              propertyName: updateData.name,
+              keyPerson: updateData.keyPerson,
+              contact: updateData.contact,
+              location: updateData.location,
+              serviceType: updateData.serviceType,
+              serviceDetails: updateData.serviceDetails,
+              lastServiceDate: null,
+              scheduledDate: updateData.serviceDate,
+              nextReminderTime: updateData.serviceDate,
+              status: "scheduled",
+              called: false,
+              scheduled: true,
+              completed: false,
+              isNewService: true,
+              escalationLevel: 0,
+              callAttempts: 0,
+              notificationSent: false,
+            });
+          }
+        }
+
+        return res.status(200).json({
+          message: "Property updated successfully",
+          property: updatedProperty,
+        });
+      } catch (error) {
+        console.error("Error updating property:", error);
+        return res.status(500).json({
+          message: "Error updating property",
+          error: error.message,
+        });
+      }
     }
 
     if (req.method === "DELETE") {

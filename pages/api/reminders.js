@@ -787,12 +787,6 @@ async function generateRemindersFromProperties() {
             isNewService: true,
             notificationSent: false,
           });
-
-          console.log(
-            `Auto-generated scheduled reminder for: ${
-              property.name
-            } - ${serviceDate.toLocaleDateString("en-GB")}`
-          );
         } else if (property.isOnHold || !property.serviceDate) {
           // Create on-hold reminder for properties without service dates or explicitly on hold
           await Reminder.create({
