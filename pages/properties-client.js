@@ -515,16 +515,13 @@ const PropertiesClient = () => {
         case "input":
           return (
             <div key={field.id} className={styles.formGroup}>
-              <label htmlFor={fieldName}>
-                {field.label} {field.required && "*"}
-              </label>
+              <label htmlFor={fieldName}>{field.label}</label>
               <input
                 type="text"
                 id={fieldName}
                 name={fieldName}
                 value={fieldValue}
                 onChange={handleInputChange}
-                required={field.required}
                 placeholder={field.placeholder || ""}
               />
             </div>
@@ -533,16 +530,13 @@ const PropertiesClient = () => {
         case "number":
           return (
             <div key={field.id} className={styles.formGroup}>
-              <label htmlFor={fieldName}>
-                {field.label} {field.required && "*"}
-              </label>
+              <label htmlFor={fieldName}>{field.label}</label>
               <input
                 type="number"
                 id={fieldName}
                 name={fieldName}
                 value={fieldValue}
                 onChange={handleInputChange}
-                required={field.required}
                 placeholder={field.placeholder || ""}
                 min="0"
               />
@@ -552,15 +546,12 @@ const PropertiesClient = () => {
         case "select":
           return (
             <div key={field.id} className={styles.formGroup}>
-              <label htmlFor={fieldName}>
-                {field.label} {field.required && "*"}
-              </label>
+              <label htmlFor={fieldName}>{field.label}</label>
               <select
                 id={fieldName}
                 name={fieldName}
                 value={fieldValue}
                 onChange={handleInputChange}
-                required={field.required}
               >
                 <option value="">Select {field.label}</option>
                 {field.options &&
@@ -576,15 +567,12 @@ const PropertiesClient = () => {
         case "textarea":
           return (
             <div key={field.id} className={styles.formGroup}>
-              <label htmlFor={fieldName}>
-                {field.label} {field.required && "*"}
-              </label>
+              <label htmlFor={fieldName}>{field.label}</label>
               <textarea
                 id={fieldName}
                 name={fieldName}
                 value={fieldValue}
                 onChange={handleInputChange}
-                required={field.required}
                 placeholder={field.placeholder || ""}
                 rows="4"
               />
@@ -601,7 +589,7 @@ const PropertiesClient = () => {
                   checked={!!fieldValue}
                   onChange={handleInputChange}
                 />
-                {field.label} {field.required && "*"}
+                {field.label}
               </label>
             </div>
           );
@@ -884,42 +872,39 @@ const PropertiesClient = () => {
               <div className={styles.formGrid}>
                 {/* Property Name */}
                 <div className={styles.formGroup}>
-                  <label htmlFor="name">Property Name *</label>
+                  <label htmlFor="name">Property Name </label>
                   <input
                     type="text"
                     id="name"
                     name="name"
                     value={formData.name}
                     onChange={handleInputChange}
-                    required
                     placeholder="e.g., Sai Samarth, Royal Heights"
                   />
                 </div>
 
                 {/* Key Person */}
                 <div className={styles.formGroup}>
-                  <label htmlFor="keyPerson">Key Person *</label>
+                  <label htmlFor="keyPerson">Key Person </label>
                   <input
                     type="text"
                     id="keyPerson"
                     name="keyPerson"
                     value={formData.keyPerson}
                     onChange={handleInputChange}
-                    required
                     placeholder="e.g., Sarvesh Sawant"
                   />
                 </div>
 
                 {/* Contact Number */}
                 <div className={styles.formGroup}>
-                  <label htmlFor="contact">Contact Number *</label>
+                  <label htmlFor="contact">Contact Number </label>
                   <input
                     type="tel"
                     id="contact"
                     name="contact"
                     value={formData.contact}
                     onChange={handleInputChange}
-                    required
                     placeholder="e.g., 9876543210"
                     pattern="[0-9]{10}"
                   />
@@ -927,13 +912,12 @@ const PropertiesClient = () => {
 
                 {/* Main Location */}
                 <div className={styles.formGroup}>
-                  <label htmlFor="location">Main Location *</label>
+                  <label htmlFor="location">Main Location </label>
                   <select
                     id="location"
                     name="location"
                     value={formData.location}
                     onChange={handleInputChange}
-                    required
                   >
                     <option value="">Select Location</option>
                     {locations.map((location) => (
@@ -947,14 +931,13 @@ const PropertiesClient = () => {
                 {/* Custom Location */}
                 {formData.location === "Other/Manual" && (
                   <div className={styles.formGroup}>
-                    <label htmlFor="customLocation">Enter Location *</label>
+                    <label htmlFor="customLocation">Enter Location </label>
                     <input
                       type="text"
                       id="customLocation"
                       name="customLocation"
                       value={formData.customLocation}
                       onChange={handleInputChange}
-                      required
                       placeholder="e.g., Thane-E, Pune-W, Mumbai-Central"
                     />
                     <small>
@@ -978,14 +961,13 @@ const PropertiesClient = () => {
 
                 {/* Amount */}
                 <div className={styles.formGroup}>
-                  <label htmlFor="amount">Amount (₹) *</label>
+                  <label htmlFor="amount">Amount (₹) </label>
                   <input
                     type="number"
                     id="amount"
                     name="amount"
                     value={formData.amount}
                     onChange={handleInputChange}
-                    required
                     placeholder={
                       selectedService?.defaultPrice
                         ? `Default: ₹${selectedService.defaultPrice}`
@@ -1050,7 +1032,6 @@ const PropertiesClient = () => {
                     name="serviceType"
                     value={formData.serviceType}
                     onChange={handleInputChange}
-                    required
                   >
                     <option value="">Select Service Type</option>
                     {services

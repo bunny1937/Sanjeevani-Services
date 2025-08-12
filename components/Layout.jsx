@@ -1,16 +1,14 @@
 // components/Layout.jsx
-"use client";
-
 import { useState, useEffect } from "react";
-import { useSession, signOut } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { useAuth } from "../context/AuthContext";
 import styles from "./Layout.module.css";
 
-const Layout = ({ children, user }) => {
+const Layout = ({ children }) => {
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { user, signOut, loading: authLoading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [recentReminders, setRecentReminders] = useState([]);
@@ -52,7 +50,7 @@ const Layout = ({ children, user }) => {
 
   useEffect(() => {
     // Only fetch stats if user is authenticated and not on auth page
-    if (status === "authenticated" && !isAuthPage) {
+    if (user && !isAuthPage) {
       const fetchStats = async () => {
         try {
           const response = await fetch("/api/reminders");
@@ -80,10 +78,14 @@ const Layout = ({ children, user }) => {
       const interval = setInterval(fetchStats, 60000); // Every minute
       return () => clearInterval(interval);
     }
-  }, [status, isAuthPage]);
+  }, [user, isAuthPage]);
 
   const handleNavItemClick = () => {
     setSidebarOpen(false);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
   };
 
   // If on auth page, render minimal layout
@@ -96,7 +98,7 @@ const Layout = ({ children, user }) => {
   }
 
   // If not authenticated and not on auth page, don't render full layout
-  if (status === "unauthenticated") {
+  if (!user && !authLoading) {
     return (
       <div className={styles.authLayoutContainer}>
         <main className={styles.authPageContent}>{children}</main>
@@ -105,7 +107,7 @@ const Layout = ({ children, user }) => {
   }
 
   // If still loading session, show minimal layout
-  if (status === "loading") {
+  if (authLoading) {
     return (
       <div className={styles.loadingContainer}>
         <div className={styles.spinner}>
@@ -342,12 +344,9 @@ const Layout = ({ children, user }) => {
               <div className={styles.profileBox}>
                 <div className={styles.avatar}>👤</div>
                 <span className={styles.welcomeText}>
-                  Welcome, {session?.user?.name || "User"}
+                  Welcome, {user?.name || "User"}
                 </span>
-                <button
-                  className={styles.logoutButton}
-                  onClick={() => signOut({ callbackUrl: "/auth/signin" })}
-                >
+                <button className={styles.logoutButton} onClick={handleSignOut}>
                   Logout
                 </button>
               </div>

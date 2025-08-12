@@ -1,19 +1,21 @@
-// pages/auth/signin.js
+// pages/auth/signup.js
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { useAuth } from "../../context/AuthContext";
 import styles from "./auth.module.css";
 
-export default function SignIn() {
+export default function SignUp() {
   const [formData, setFormData] = useState({
+    name: "",
     email: "",
     password: "",
+    confirmPassword: "",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const { signIn, isAuthenticated } = useAuth();
+  const { signUp, isAuthenticated } = useAuth();
   const router = useRouter();
 
   // Redirect if already authenticated
@@ -35,7 +37,25 @@ export default function SignIn() {
     setLoading(true);
     setError("");
 
-    const result = await signIn(formData.email, formData.password);
+    // Validate passwords match
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match");
+      setLoading(false);
+      return;
+    }
+
+    // Validate password length
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters");
+      setLoading(false);
+      return;
+    }
+
+    const result = await signUp(
+      formData.name,
+      formData.email,
+      formData.password
+    );
 
     if (result.success) {
       router.push("/");
@@ -51,8 +71,8 @@ export default function SignIn() {
       <div className={styles.formWrapper}>
         <div className={styles.formContainer}>
           <div className={styles.header}>
-            <h1 className={styles.title}>Welcome Back</h1>
-            <p className={styles.subtitle}>Sign in to your account</p>
+            <h1 className={styles.title}>Create Account</h1>
+            <p className={styles.subtitle}>Sign up for a new account</p>
           </div>
 
           <form onSubmit={handleSubmit} className={styles.form}>
@@ -62,6 +82,23 @@ export default function SignIn() {
                 {error}
               </div>
             )}
+
+            <div className={styles.inputGroup}>
+              <label htmlFor="name" className={styles.label}>
+                Full Name
+              </label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                value={formData.name}
+                onChange={handleChange}
+                required
+                className={styles.input}
+                placeholder="Enter your full name"
+                disabled={loading}
+              />
+            </div>
 
             <div className={styles.inputGroup}>
               <label htmlFor="email" className={styles.label}>
@@ -97,20 +134,37 @@ export default function SignIn() {
               />
             </div>
 
+            <div className={styles.inputGroup}>
+              <label htmlFor="confirmPassword" className={styles.label}>
+                Confirm Password
+              </label>
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                required
+                className={styles.input}
+                placeholder="Confirm your password"
+                disabled={loading}
+              />
+            </div>
+
             <button
               type="submit"
               className={styles.submitButton}
               disabled={loading}
             >
-              {loading ? <span className={styles.spinner}></span> : "Sign In"}
+              {loading ? <span className={styles.spinner}></span> : "Sign Up"}
             </button>
           </form>
 
           <div className={styles.footer}>
             <p className={styles.footerText}>
-              Don't have an account?{" "}
-              <Link href="/auth/signup" className={styles.link}>
-                Sign up here
+              Already have an account?{" "}
+              <Link href="/auth/signin" className={styles.link}>
+                Sign in here
               </Link>
             </p>
           </div>

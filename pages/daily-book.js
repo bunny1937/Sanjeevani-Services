@@ -479,18 +479,12 @@ const DailyBook = () => {
             case "input":
               return (
                 <div key={field.id} className={styles.formGroup}>
-                  <label>
-                    {field.label}{" "}
-                    {field.required && (
-                      <span className={styles.required}>*</span>
-                    )}
-                  </label>
+                  <label>{field.label} </label>
                   <input
                     type="text"
                     name={fieldName}
                     value={fieldValue}
                     onChange={handleEditInputChange}
-                    required={field.required}
                     placeholder={field.placeholder || ""}
                   />
                 </div>
@@ -499,18 +493,12 @@ const DailyBook = () => {
             case "number":
               return (
                 <div key={field.id} className={styles.formGroup}>
-                  <label>
-                    {field.label}{" "}
-                    {field.required && (
-                      <span className={styles.required}>*</span>
-                    )}
-                  </label>
+                  <label>{field.label} </label>
                   <input
                     type="number"
                     name={fieldName}
                     value={fieldValue}
                     onChange={handleEditInputChange}
-                    required={field.required}
                     placeholder={field.placeholder || ""}
                     min="0"
                   />
@@ -520,17 +508,11 @@ const DailyBook = () => {
             case "select":
               return (
                 <div key={field.id} className={styles.formGroup}>
-                  <label>
-                    {field.label}{" "}
-                    {field.required && (
-                      <span className={styles.required}>*</span>
-                    )}
-                  </label>
+                  <label>{field.label} </label>
                   <select
                     name={fieldName}
                     value={fieldValue}
                     onChange={handleEditInputChange}
-                    required={field.required}
                   >
                     <option value="">Select {field.label}</option>
                     {field.options &&
@@ -546,17 +528,11 @@ const DailyBook = () => {
             case "textarea":
               return (
                 <div key={field.id} className={styles.formGroup}>
-                  <label>
-                    {field.label}{" "}
-                    {field.required && (
-                      <span className={styles.required}>*</span>
-                    )}
-                  </label>
+                  <label>{field.label} </label>
                   <textarea
                     name={fieldName}
                     value={fieldValue}
                     onChange={handleEditInputChange}
-                    required={field.required}
                     placeholder={field.placeholder || ""}
                     rows="4"
                   />
@@ -574,9 +550,6 @@ const DailyBook = () => {
                       onChange={handleEditInputChange}
                     />
                     {field.label}{" "}
-                    {field.required && (
-                      <span className={styles.required}>*</span>
-                    )}
                   </label>
                 </div>
               );
@@ -619,18 +592,12 @@ const DailyBook = () => {
             case "input":
               return (
                 <div key={field.id} className={styles.formGroup}>
-                  <label>
-                    {field.label}{" "}
-                    {field.required && (
-                      <span className={styles.required}>*</span>
-                    )}
-                  </label>
+                  <label>{field.label} </label>
                   <input
                     type="text"
                     name={fieldName}
                     value={fieldValue}
                     onChange={handleInputChange}
-                    required={field.required}
                     placeholder={field.placeholder || ""}
                   />
                 </div>
@@ -639,18 +606,12 @@ const DailyBook = () => {
             case "number":
               return (
                 <div key={field.id} className={styles.formGroup}>
-                  <label>
-                    {field.label}{" "}
-                    {field.required && (
-                      <span className={styles.required}>*</span>
-                    )}
-                  </label>
+                  <label>{field.label} </label>
                   <input
                     type="number"
                     name={fieldName}
                     value={fieldValue}
                     onChange={handleInputChange}
-                    required={field.required}
                     placeholder={field.placeholder || ""}
                     min="0"
                   />
@@ -660,17 +621,11 @@ const DailyBook = () => {
             case "select":
               return (
                 <div key={field.id} className={styles.formGroup}>
-                  <label>
-                    {field.label}{" "}
-                    {field.required && (
-                      <span className={styles.required}>*</span>
-                    )}
-                  </label>
+                  <label>{field.label} </label>
                   <select
                     name={fieldName}
                     value={fieldValue}
                     onChange={handleInputChange}
-                    required={field.required}
                   >
                     <option value="">Select {field.label}</option>
                     {field.options &&
@@ -686,17 +641,11 @@ const DailyBook = () => {
             case "textarea":
               return (
                 <div key={field.id} className={styles.formGroup}>
-                  <label>
-                    {field.label}{" "}
-                    {field.required && (
-                      <span className={styles.required}>*</span>
-                    )}
-                  </label>
+                  <label>{field.label} </label>
                   <textarea
                     name={fieldName}
                     value={fieldValue}
                     onChange={handleInputChange}
-                    required={field.required}
                     placeholder={field.placeholder || ""}
                     rows="4"
                   />
@@ -714,9 +663,6 @@ const DailyBook = () => {
                       onChange={handleInputChange}
                     />
                     {field.label}{" "}
-                    {field.required && (
-                      <span className={styles.required}>*</span>
-                    )}
                   </label>
                 </div>
               );
@@ -814,23 +760,17 @@ const DailyBook = () => {
               {/* Row 1: Service Date + Client Name (aligned properly) */}
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
-                  <label>
-                    Service Date <span className={styles.required}>*</span>
-                  </label>
+                  <label>Service Date</label>
                   <input
                     type="date"
                     name="date"
                     value={formData.date}
                     onChange={handleInputChange}
-                    required
                   />
                 </div>
 
                 <div className={styles.formGroup}>
-                  <label>
-                    Property / Client Name{" "}
-                    <span className={styles.required}>*</span>
-                  </label>
+                  <label>Property / Client Name </label>
                   <div className={styles.autocompleteContainer}>
                     <input
                       type="text"
@@ -838,7 +778,6 @@ const DailyBook = () => {
                       value={formData.property}
                       onChange={handleInputChange}
                       placeholder="Enter property/client name"
-                      required
                     />
                     {showPropertySuggestions &&
                       filteredProperties.length > 0 && (
@@ -862,29 +801,23 @@ const DailyBook = () => {
               {/* Row 2: Service + Property */}
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
-                  <label>
-                    Key Person Name <span className={styles.required}>*</span>
-                  </label>
+                  <label>Key Person Name</label>
                   <input
                     type="text"
                     name="keyPerson"
                     value={formData.keyPerson}
                     onChange={handleInputChange}
                     placeholder="Key person name"
-                    required
                   />
                 </div>
                 <div className={styles.formGroup}>
-                  <label>
-                    Location <span className={styles.required}>*</span>
-                  </label>
+                  <label>Location</label>
                   <input
                     type="text"
                     name="location"
                     value={formData.location}
                     onChange={handleInputChange}
                     placeholder="Location"
-                    required
                   />
                 </div>
               </div>
@@ -892,22 +825,17 @@ const DailyBook = () => {
               {/* Row 3: Key Person + Contact Number */}
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
-                  <label>
-                    Contact Number <span className={styles.required}>*</span>
-                  </label>
+                  <label>Contact Number</label>
                   <input
                     type="tel"
                     name="contact"
                     value={formData.contact}
                     onChange={handleInputChange}
                     placeholder="Contact number"
-                    required
                   />
                 </div>
                 <div className={styles.formGroup}>
-                  <label>
-                    Amount <span className={styles.required}>*</span>
-                  </label>
+                  <label>Amount</label>
                   <input
                     type="number"
                     name="amount"
@@ -916,7 +844,6 @@ const DailyBook = () => {
                     placeholder="Amount"
                     min="0"
                     step="0.01"
-                    required
                   />
                 </div>
               </div>
@@ -924,14 +851,11 @@ const DailyBook = () => {
               {/* Row 4: Location + Amount */}
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
-                  <label>
-                    Service <span className={styles.required}>*</span>
-                  </label>
+                  <label>Service</label>
                   <select
                     name="service"
                     value={formData.service}
                     onChange={handleInputChange}
-                    required
                   >
                     <option value="">Select service</option>
                     {services.map((service) => (
@@ -1248,30 +1172,23 @@ const DailyBook = () => {
               {/* Row 1: Service Date + Client Name */}
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
-                  <label>
-                    Service Date <span className={styles.required}>*</span>
-                  </label>
+                  <label>Service Date</label>
                   <input
                     type="date"
                     name="date"
                     value={editFormData.date}
                     onChange={handleEditInputChange}
-                    required
                   />
                 </div>
 
                 <div className={styles.formGroup}>
-                  <label>
-                    Property / Client Name{" "}
-                    <span className={styles.required}>*</span>
-                  </label>
+                  <label>Property / Client Name </label>
                   <input
                     type="text"
                     name="property"
                     value={editFormData.property}
                     onChange={handleEditInputChange}
                     placeholder="Enter property/client name"
-                    required
                   />
                 </div>
               </div>
@@ -1279,29 +1196,23 @@ const DailyBook = () => {
               {/* Row 2: Key Person + Location */}
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
-                  <label>
-                    Key Person Name <span className={styles.required}>*</span>
-                  </label>
+                  <label>Key Person Name</label>
                   <input
                     type="text"
                     name="keyPerson"
                     value={editFormData.keyPerson}
                     onChange={handleEditInputChange}
                     placeholder="Key person name"
-                    required
                   />
                 </div>
                 <div className={styles.formGroup}>
-                  <label>
-                    Location <span className={styles.required}>*</span>
-                  </label>
+                  <label>Location</label>
                   <input
                     type="text"
                     name="location"
                     value={editFormData.location}
                     onChange={handleEditInputChange}
                     placeholder="Location"
-                    required
                   />
                 </div>
               </div>
@@ -1309,22 +1220,17 @@ const DailyBook = () => {
               {/* Row 3: Contact + Amount */}
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
-                  <label>
-                    Contact Number <span className={styles.required}>*</span>
-                  </label>
+                  <label>Contact Number</label>
                   <input
                     type="tel"
                     name="contact"
                     value={editFormData.contact}
                     onChange={handleEditInputChange}
                     placeholder="Contact number"
-                    required
                   />
                 </div>
                 <div className={styles.formGroup}>
-                  <label>
-                    Amount <span className={styles.required}>*</span>
-                  </label>
+                  <label>Amount</label>
                   <input
                     type="number"
                     name="amount"
@@ -1333,7 +1239,6 @@ const DailyBook = () => {
                     placeholder="Amount"
                     min="0"
                     step="0.01"
-                    required
                   />
                 </div>
               </div>
@@ -1341,14 +1246,11 @@ const DailyBook = () => {
               {/* Row 4: Service + Remarks */}
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
-                  <label>
-                    Service <span className={styles.required}>*</span>
-                  </label>
+                  <label>Service</label>
                   <select
                     name="service"
                     value={editFormData.service}
                     onChange={handleEditInputChange}
-                    required
                   >
                     <option value="">Select service</option>
                     {services.map((service) => (

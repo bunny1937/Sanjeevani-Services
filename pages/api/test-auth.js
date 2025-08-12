@@ -1,48 +1,107 @@
 // pages/api/test-auth.js
-import connectDB from "../../lib/mongodb";
-import User from "../../models/User";
-import bcrypt from "bcryptjs";
+import { getServerSession } from "next-auth/next";
+import NextAuth from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
+
+// Import your auth options (you might want to move this to a separate file)
+const authOptions = {
+  providers: [
+    CredentialsProvider({
+      id: "credentials",
+      name: "Credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        // Your authorization logic here
+        return null;
+      },
+    }),
+  ],
+  session: {
+    strategy: "jwt",
+    maxAge: 24 * 60 * 60,
+  },
+  pages: {
+    signIn: "/auth/signin",
+    error: "/auth/signin",
+  },
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.name = user.name;
+        token.email = user.email;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (token) {
+        session.user.id = token.id;
+        session.user.name = token.name;
+        session.user.email = token.email;
+      }
+      return session;
+    },
+  },
+  secret: process.env.NEXTAUTH_SECRET,
+  debug: process.env.NODE_ENV === "development",
+};
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
   try {
-    const { email, password } = req.body;
+    // Test environment variables
+    const envCheck = {
+      NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET ? "Present" : "Missing",
+      NEXTAUTH_URL: process.env.NEXTAUTH_URL
+        ? process.env.NEXTAUTH_URL
+        : "Not set",
+      MONGODB_URI: process.env.MONGODB_URI ? "Present" : "Missing",
+      NODE_ENV: process.env.NODE_ENV,
+    };
 
-    if (!email || !password) {
-      return res.status(400).json({ error: "Email and password required" });
+    // Test session
+    let sessionTest = null;
+    let sessionError = null;
+
+    try {
+      sessionTest = await getServerSession(req, res, authOptions);
+    } catch (error) {
+      sessionError = error.message;
     }
 
-    console.log("🔍 Testing authentication for:", email);
-
-    await connectDB();
-
-    const user = await User.findOne({ email });
-
-    if (!user) {
-      return res.status(401).json({ error: "User not found" });
+    // Test database connection (if you have a test function)
+    let dbTest = "Not tested";
+    try {
+      // You might want to import and test your connectDB function here
+      dbTest = "Connection test not implemented";
+    } catch (error) {
+      dbTest = `Error: ${error.message}`;
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-
-    if (!isPasswordValid) {
-      return res.status(401).json({ error: "Invalid password" });
-    }
-
-    return res.status(200).json({
-      success: true,
-      user: {
-        id: user._id.toString(),
-        name: user.name,
-        email: user.email,
-      },
+    res.status(200).json({
+      message: "Authentication test endpoint",
+      timestamp: new Date().toISOString(),
+      environment: envCheck,
+      session: sessionTest
+        ? {
+            authenticated: true,
+            user: sessionTest.user,
+          }
+        : {
+            authenticated: false,
+            error: sessionError,
+          },
+      database: dbTest,
+      nextAuthVersion: "5.x", // Update based on your version
     });
   } catch (error) {
     console.error("Test auth error:", error);
-    return res
-      .status(500)
-      .json({ error: "Server error", details: error.message });
+    res.status(500).json({
+      error: "Test authentication failed",
+      message: error.message,
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+    });
   }
 }

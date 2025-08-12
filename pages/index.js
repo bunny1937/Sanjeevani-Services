@@ -1,30 +1,28 @@
 // pages/index.js
-import { getSession } from "next-auth/react";
+import { useRequireAuth } from "../hooks/useRequireAuth";
 import DashboardClient from "./DashboardClient";
 
-export default function Dashboard({ user }) {
-  return (
-    <div>
-      <DashboardClient user={user} />
-    </div>
-  );
-}
+export default function Dashboard() {
+  const { user, loading } = useRequireAuth();
 
-export async function getServerSideProps(context) {
-  const session = await getSession(context);
-
-  if (!session) {
-    return {
-      redirect: {
-        destination: "/auth/signin",
-        permanent: false,
-      },
-    };
+  if (loading) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+        }}
+      >
+        <div>Loading...</div>
+      </div>
+    );
   }
 
-  return {
-    props: {
-      user: session.user,
-    },
-  };
+  if (!user) {
+    return null; // Will redirect to signin
+  }
+
+  return <DashboardClient />;
 }

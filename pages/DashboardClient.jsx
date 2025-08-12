@@ -1,13 +1,11 @@
 // components/DashboardClient.jsx
-"use client";
-
 import { useState, useEffect, useCallback } from "react";
-import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/router";
+import { useAuth } from "../context/AuthContext";
 import styles from "./Dashboard.module.css";
 
-const DashboardClient = ({ user }) => {
-  const { data: session, status } = useSession();
+const DashboardClient = () => {
+  const { user } = useAuth();
   const router = useRouter();
 
   const [stats, setStats] = useState({
@@ -30,15 +28,6 @@ const DashboardClient = ({ user }) => {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // Redirect if not authenticated
-  useEffect(() => {
-    if (status === "loading") return; // Still loading
-    if (status === "unauthenticated") {
-      router.push("/auth/signin");
-      return;
-    }
-  }, [status, router]);
 
   const fetchAllData = useCallback(async () => {
     try {
@@ -141,10 +130,10 @@ const DashboardClient = ({ user }) => {
   }, []);
 
   useEffect(() => {
-    if (status === "authenticated") {
+    if (user) {
       fetchAllData();
     }
-  }, [fetchAllData, status]);
+  }, [fetchAllData, user]);
 
   const calculateStats = (
     properties,
@@ -315,23 +304,6 @@ const DashboardClient = ({ user }) => {
       </div>
     </div>
   );
-
-  // Show loading while session is loading
-  if (status === "loading") {
-    return (
-      <div className={styles.loadingContainer}>
-        <div className={styles.spinner}>
-          <div className={styles.spinnerRing}></div>
-          <p>Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Don't render if not authenticated
-  if (status === "unauthenticated") {
-    return null;
-  }
 
   if (loading) {
     return (
