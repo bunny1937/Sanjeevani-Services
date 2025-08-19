@@ -244,6 +244,8 @@ export default async function handler(req, res) {
 
       // Create invoice with enhanced data
       const invoiceData = {
+        documentType: req.body.documentType || "invoice",
+
         propertyId: propertyId || null,
         propertyName:
           property?.name || customClientInfo?.name || "Custom Invoice",

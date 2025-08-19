@@ -1,6 +1,6 @@
 // pages/invoices/new.jsx - Create blank invoice with exact structure
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -8,6 +8,16 @@ import styles from "./Invoice.module.css";
 
 export default function NewInvoicePage() {
   const router = useRouter();
+  const [documentType, setDocumentType] = useState("invoice");
+  const [isQuote, setIsQuote] = useState(false);
+
+  useEffect(() => {
+    if (router.query.type) {
+      const type = router.query.type;
+      setDocumentType(type);
+      setIsQuote(type === "quote");
+    }
+  }, [router.query.type]);
   const [editable, setEditable] = useState({
     // Client Information
     clientInfo: {
@@ -22,10 +32,15 @@ export default function NewInvoicePage() {
       date: new Date().toLocaleDateString("en-GB"),
       quotationNumber: Math.floor(Math.random() * 1000).toString(),
       workOrderNumber: "",
+      validUntil: isQuote
+        ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString(
+            "en-GB"
+          )
+        : "",
     },
 
     // Subject
-    subject: "",
+    subject: documentType === "quote" ? "SERVICE QUOTATION" : "SERVICE INVOICE",
 
     // Line Items
     customLineItems: [
@@ -234,7 +249,7 @@ export default function NewInvoicePage() {
     pdf.save(fileName);
   };
 
-  const saveInvoice = async () => {
+  const saveDocument = async () => {
     const { totalAmount, discountAmount, grossTotal } = calculateTotals();
 
     try {
@@ -242,6 +257,7 @@ export default function NewInvoicePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          documentType: documentType,
           propertyId: null, // No property linked
           customLineItems: editable.customLineItems,
           customDiscount: {
@@ -278,13 +294,41 @@ export default function NewInvoicePage() {
       {/* Edit Controls */}
       <div className={styles.editControls}>
         <div className={styles.controlHeader}>
-          <h2>Create New Invoice</h2>
+          <h2>Create New Document</h2>
+          <div className={styles.documentTypeSelector}>
+            <label>
+              <input
+                type="radio"
+                name="documentType"
+                value="quote"
+                checked={isQuote}
+                onChange={(e) => {
+                  setIsQuote(true);
+                  setDocumentType("quote");
+                }}
+              />
+              Quote
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="documentType"
+                value="invoice"
+                checked={!isQuote}
+                onChange={(e) => {
+                  setIsQuote(false);
+                  setDocumentType("invoice");
+                }}
+              />
+              Invoice
+            </label>
+          </div>
           <div className={styles.headerActions}>
             <button
               onClick={() => router.push("/invoices")}
               className={styles.backBtn}
             >
-              ← Back to Invoices
+              ← Back to List
             </button>
           </div>
         </div>
@@ -426,23 +470,44 @@ export default function NewInvoicePage() {
                 placeholder="Quote number"
               />
             </div>
-            <div className={styles.configItem}>
-              <label>Work Order Number:</label>
-              <input
-                type="text"
-                value={editable.invoiceDetails.workOrderNumber}
-                onChange={(e) =>
-                  setEditable({
-                    ...editable,
-                    invoiceDetails: {
-                      ...editable.invoiceDetails,
-                      workOrderNumber: e.target.value,
-                    },
-                  })
-                }
-                placeholder="Work order number (optional)"
-              />
-            </div>
+            {!isQuote && (
+              <div className={styles.configItem}>
+                <label>Work Order Number:</label>
+                <input
+                  type="text"
+                  value={editable.invoiceDetails.workOrderNumber}
+                  onChange={(e) =>
+                    setEditable({
+                      ...editable,
+                      invoiceDetails: {
+                        ...editable.invoiceDetails,
+                        workOrderNumber: e.target.value,
+                      },
+                    })
+                  }
+                  placeholder="Work order number (optional)"
+                />
+              </div>
+            )}
+
+            {isQuote && (
+              <div className={styles.configItem}>
+                <label>Quote Valid Until:</label>
+                <input
+                  type="date"
+                  value={editable.invoiceDetails.validUntil}
+                  onChange={(e) =>
+                    setEditable({
+                      ...editable,
+                      invoiceDetails: {
+                        ...editable.invoiceDetails,
+                        validUntil: e.target.value,
+                      },
+                    })
+                  }
+                />
+              </div>
+            )}
             <div className={styles.configItem}>
               <label>Contract Duration:</label>
               <select
@@ -509,9 +574,13 @@ export default function NewInvoicePage() {
                 </div>
 
                 <div className={styles.textAreaGroup}>
-                  <label>Service Due:</label>
+                  <label>{isQuote ? "Quantity:" : "Service Due:"}</label>
                   <textarea
-                    placeholder="Enter service due details"
+                    placeholder={
+                      isQuote
+                        ? "Enter quantity details"
+                        : "Enter service due details"
+                    }
                     value={item.serviceDue}
                     onChange={(e) =>
                       updateLineItem(index, "serviceDue", e.target.value)
@@ -654,8 +723,8 @@ export default function NewInvoicePage() {
 
         {/* Action Buttons */}
         <div className={styles.controlActions}>
-          <button onClick={saveInvoice} className={styles.generateBtn}>
-            Save Invoice
+          <button onClick={saveDocument} className={styles.generateBtn}>
+            Save {isQuote ? "Quote" : "Invoice"}
           </button>
           <button onClick={handleDownload} className={styles.downloadBtn}>
             Download PDF
@@ -668,10 +737,10 @@ export default function NewInvoicePage() {
         <div className={styles.invoiceHeader}>
           <div className={styles.companyInfo}>
             <h1>संजीवनी</h1>
-            <p className={styles.servicesText}>SERVICES</p>
+            <span>SERVICES</span>
           </div>
           <div className={styles.invoiceTitle}>
-            <h2>QUOTE`&apos;`</h2>`
+            <h2>{isQuote ? "QUOTE" : "INVOICE"}</h2>
           </div>
         </div>
 
@@ -695,13 +764,15 @@ export default function NewInvoicePage() {
               <strong>Date:</strong> {editable.invoiceDetails.date}
             </p>
             <p>
-              <strong>Quotation No:</strong>{" "}
+              <strong>{isQuote ? "Quotation" : "Invoice"} No:</strong>{" "}
               {editable.invoiceDetails.quotationNumber}
             </p>
-            <p>
-              <strong>Work Order No:</strong>{" "}
-              {editable.invoiceDetails.workOrderNumber}
-            </p>
+            {!isQuote && (
+              <p>
+                <strong>Work Order No:</strong>{" "}
+                {editable.invoiceDetails.workOrderNumber}
+              </p>
+            )}
           </div>
         </div>
 
@@ -719,7 +790,7 @@ export default function NewInvoicePage() {
             <tr>
               <th>SR. No.</th>
               <th>PARTICULAR</th>
-              <th>SERVICE DUE</th>
+              <th>{isQuote ? "QUANTITY" : "SERVICE DUE"}</th>
               <th>RATE</th>
               <th>AMOUNT</th>
             </tr>
@@ -793,12 +864,14 @@ export default function NewInvoicePage() {
           </tbody>
         </table>
 
-        <div className={styles.amountInWords}>
-          <p>
-            <strong>Amount In Words:</strong> {convertToWords(grossTotal)}{" "}
-            Rupees Only.
-          </p>
-          <div className={styles.signatureSection}>
+        <div className={styles.amountInWordsContainer}>
+          <div className={styles.amountInWords}>
+            <p>
+              <strong>Amount In Words:</strong> {convertToWords(grossTotal)}{" "}
+              Rupees Only.
+            </p>
+          </div>
+          <div className={styles.signature}>
             <p>
               <strong>For Sanjeevani Services</strong>
             </p>
@@ -807,25 +880,6 @@ export default function NewInvoicePage() {
               <strong>Authorised Signatory.</strong>
             </p>
           </div>
-        </div>
-
-        <div className={styles.contractDetails}>
-          <p>
-            <strong>Duration of Contract:</strong> {editable.contractDuration}
-          </p>
-          <p>
-            <strong>Frequency Mentioned Above</strong>
-          </p>
-          <p>
-            <strong>in Accordance with the Treatment.</strong>
-          </p>
-        </div>
-
-        <div className={styles.generalNotes}>
-          <p>
-            <strong>NOTE:</strong>
-          </p>
-          <p>{editable.notes}</p>
         </div>
 
         {editable.includeSpecialNotes.includeSpecialTreatment && (
@@ -840,26 +894,55 @@ export default function NewInvoicePage() {
           </div>
         )}
 
-        <div className={styles.serviceCategories}>
-          <div className={styles.categoryRow}>
-            <div className={styles.category}>WATER TANK CLEANING</div>
-            <div className={styles.category}>PEST CONTROL SERVICE</div>
+        <div className={styles.NotesContainer}>
+          <div className={styles.generalNotes}>
+            <p>
+              <strong>NOTE:</strong>
+            </p>
+            <div className={styles.contractDetails}>
+              <p>
+                <strong>Duration of Contract:</strong>{" "}
+                {editable.contractDuration}
+              </p>
+            </div>
+            <p>Frequency Mentioned Above in Accordance with the Treatment.</p>
+            <p>{editable.notes}</p>
           </div>
-          <div className={styles.categoryRow}>
-            <div className={styles.category}>HOUSE KEEPING</div>
-            <div className={styles.category}>MOTOR REPAIRING & REWINDING</div>
+          <div className={styles.servicesImage}>
+            <div className={styles.serviceCategories}>
+              <div className={styles.categoryRow}>
+                <div className={styles.category}>WATER TANK CLEANING</div>
+                <div className={styles.category}>PEST CONTROL SERVICE</div>
+              </div>
+              <div className={styles.categoryRow}>
+                <div className={styles.category}>HOUSE KEEPING</div>
+                <div className={styles.category}>
+                  MOTOR REPAIRING & REWINDING
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
+        {editable.includeSpecialNotes.includeSpecialTreatment && (
+          <div className={styles.additionalNotes}>
+            <p>{editable.includeSpecialNotes.specialTreatmentNote}</p>
+          </div>
+        )}
+
+        {editable.includeSpecialNotes.includeTargetedPests && (
+          <div className={styles.additionalNotes}>
+            <p>{editable.includeSpecialNotes.targetedPestsNote}</p>
+          </div>
+        )}
+
         <div className={styles.footer}>
-          <div className={styles.locationInfo}>
+          <div className={styles.companyDetails}>
             <p>
               <strong>
                 DOMBIVLI | KALYAN | THANE | MULUND | GHATKOPAR | AIROLI | VASHI
               </strong>
             </p>
-          </div>
-          <div className={styles.contactInfo}>
             <p>
               Contact: 7715823333 / 9930742021 | Email Id:
               sanjeevaniservices1@gmail.com

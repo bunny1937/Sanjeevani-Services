@@ -107,10 +107,16 @@ export default function InvoiceListPage() {
         <p>Create new invoices or manage existing ones</p>
         <div className={styles.mainActions}>
           <button
-            onClick={handleCreateNewInvoice}
+            onClick={() => router.push("/invoices/new?type=invoice")}
             className={styles.createNewInvoiceBtn}
           >
             📄 GENERATE A NEW INVOICE
+          </button>
+          <button
+            onClick={() => router.push("/invoices/new?type=quote")}
+            className={styles.createNewQuoteBtn}
+          >
+            📋 GENERATE A NEW QUOTE
           </button>
         </div>
       </div>
@@ -122,7 +128,7 @@ export default function InvoiceListPage() {
             }`}
             onClick={() => setActiveTab("properties")}
           >
-            Create New Invoice ({properties.length})
+            Create New ({properties.length} properties)
           </button>
           <button
             className={`${styles.tabButton} ${
@@ -130,7 +136,25 @@ export default function InvoiceListPage() {
             }`}
             onClick={() => setActiveTab("invoices")}
           >
-            Generated Invoices ({generatedInvoices.length})
+            Generated Invoices (
+            {
+              generatedInvoices.filter((inv) => inv.documentType === "invoice")
+                .length
+            }
+            )
+          </button>
+          <button
+            className={`${styles.tabButton} ${
+              activeTab === "quotes" ? styles.active : ""
+            }`}
+            onClick={() => setActiveTab("quotes")}
+          >
+            Generated Quotes (
+            {
+              generatedInvoices.filter((inv) => inv.documentType === "quote")
+                .length
+            }
+            )
           </button>
         </div>
         {viewModalOpen && selectedProperty && (
@@ -467,10 +491,16 @@ export default function InvoiceListPage() {
                   </div>
                   <div className={styles.propertyActions}>
                     <Link
-                      href={`/invoices/${property._id}`}
+                      href={`/invoices/${property._id}?type=invoice`}
                       className={styles.generateInvoiceBtn}
                     >
                       Generate Invoice
+                    </Link>
+                    <Link
+                      href={`/invoices/${property._id}?type=quote`}
+                      className={styles.generateQuoteBtn}
+                    >
+                      Generate Quote
                     </Link>
                     <button
                       onClick={() => handleViewProperty(property)}
@@ -489,106 +519,151 @@ export default function InvoiceListPage() {
       {activeTab === "invoices" && (
         <div className={styles.tabContent}>
           <h2>Generated Invoices</h2>
-          {generatedInvoices.length === 0 ? (
+          {generatedInvoices.filter((inv) => inv.documentType === "invoice")
+            .length === 0 ? (
             <div className={styles.emptyState}>
               <p>No invoices generated yet.</p>
             </div>
           ) : (
             <div className={styles.invoicesList}>
-              {generatedInvoices.map((invoice) => (
-                <div key={invoice._id} className={styles.invoiceCard}>
-                  <div className={styles.invoiceHeader}>
-                    <div className={styles.invoiceNumber}>
-                      <h3>Invoice #{invoice.invoiceNumber}</h3>
-                      <span
-                        className={`${styles.status} ${
-                          styles[invoice.status?.toLowerCase()]
-                        }`}
+              {generatedInvoices
+                .filter((inv) => inv.documentType === "invoice")
+                .map((invoice) => (
+                  <div key={invoice._id} className={styles.invoiceCard}>
+                    <div className={styles.invoiceHeader}>
+                      <div className={styles.invoiceNumber}>
+                        <h3>Invoice #{invoice.invoiceNumber}</h3>
+                        <span
+                          className={`${styles.status} ${
+                            styles[invoice.status?.toLowerCase()]
+                          }`}
+                        >
+                          {invoice.status}
+                        </span>
+                      </div>
+                      <div className={styles.invoiceMeta}>
+                        <p>Quote No: {invoice.quotationNumber}</p>
+                        <p>Date: {invoice.invoiceDate}</p>
+                      </div>
+                    </div>
+
+                    <div className={styles.invoiceDetails}>
+                      <div className={styles.clientInfo}>
+                        <h4>{invoice.propertyName}</h4>
+                        <p>{invoice.location}</p>
+                        <p>Contact: {invoice.contact}</p>
+                        {invoice.keyPerson && (
+                          <p>Key Person: {invoice.keyPerson}</p>
+                        )}
+                      </div>
+
+                      <div className={styles.invoiceAmounts}>
+                        <div className={styles.amountRow}>
+                          <span>Total Amount:</span>
+                          <span>
+                            ₹{invoice.totalAmount?.toLocaleString("en-IN")}
+                          </span>
+                        </div>
+                        <div className={styles.amountRow}>
+                          <span>
+                            Discount ({invoice.discount?.percentage}%):
+                          </span>
+                          <span>
+                            -₹
+                            {invoice.discount?.amount?.toLocaleString("en-IN")}
+                          </span>
+                        </div>
+                        <div className={`${styles.amountRow} ${styles.total}`}>
+                          <span>
+                            <strong>Gross Total:</strong>
+                          </span>
+                          <span>
+                            <strong>
+                              ₹{invoice.grossTotal?.toLocaleString("en-IN")}
+                            </strong>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className={styles.invoiceServices}>
+                      <h5>
+                        Services ({invoice.lineItems?.length || 0} items):
+                      </h5>
+                      <div className={styles.servicesList}>
+                        {invoice.lineItems?.slice(0, 2).map((item, index) => (
+                          <div key={index} className={styles.serviceItem}>
+                            <span>{item.particular}</span>
+                            <span>₹{item.amount?.toLocaleString("en-IN")}</span>
+                          </div>
+                        ))}
+                        {invoice.lineItems?.length > 2 && (
+                          <div className={styles.moreServices}>
+                            +{invoice.lineItems.length - 2} more services
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className={styles.invoiceActions}>
+                      <Link
+                        href={`/invoices/${invoice.propertyId}?invoiceId=${invoice._id}`}
+                        className={styles.viewInvoiceBtn}
                       >
-                        {invoice.status}
-                      </span>
-                    </div>
-                    <div className={styles.invoiceMeta}>
-                      <p>Quote No: {invoice.quotationNumber}</p>
-                      <p>Date: {invoice.invoiceDate}</p>
+                        View & Download
+                      </Link>
+                      <Link
+                        href={`/invoices/${invoice.propertyId}?edit=true&invoiceId=${invoice._id}`}
+                        className={styles.editInvoiceBtn}
+                      >
+                        Edit
+                      </Link>
+                      <button
+                        onClick={() => handleDeleteInvoice(invoice._id)}
+                        className={styles.deleteInvoiceBtn}
+                      >
+                        Delete
+                      </button>
                     </div>
                   </div>
-
-                  <div className={styles.invoiceDetails}>
-                    <div className={styles.clientInfo}>
-                      <h4>{invoice.propertyName}</h4>
-                      <p>{invoice.location}</p>
-                      <p>Contact: {invoice.contact}</p>
-                      {invoice.keyPerson && (
-                        <p>Key Person: {invoice.keyPerson}</p>
-                      )}
-                    </div>
-
-                    <div className={styles.invoiceAmounts}>
-                      <div className={styles.amountRow}>
-                        <span>Total Amount:</span>
-                        <span>
-                          ₹{invoice.totalAmount?.toLocaleString("en-IN")}
+                ))}
+            </div>
+          )}
+        </div>
+      )}
+      {activeTab === "quotes" && (
+        <div className={styles.tabContent}>
+          <h2>Generated Quotes</h2>
+          {generatedInvoices.filter((inv) => inv.documentType === "quote")
+            .length === 0 ? (
+            <div className={styles.emptyState}>
+              <p>No quotes generated yet.</p>
+            </div>
+          ) : (
+            <div className={styles.invoicesList}>
+              {generatedInvoices
+                .filter((inv) => inv.documentType === "quote")
+                .map((quote) => (
+                  <div key={quote._id} className={styles.invoiceCard}>
+                    <div className={styles.invoiceHeader}>
+                      <div className={styles.invoiceNumber}>
+                        <h3>Quote #{quote.quotationNumber}</h3>
+                        <span
+                          className={`${styles.status} ${
+                            styles[quote.status?.toLowerCase()]
+                          }`}
+                        >
+                          {quote.status}
                         </span>
                       </div>
-                      <div className={styles.amountRow}>
-                        <span>Discount ({invoice.discount?.percentage}%):</span>
-                        <span>
-                          -₹{invoice.discount?.amount?.toLocaleString("en-IN")}
-                        </span>
-                      </div>
-                      <div className={`${styles.amountRow} ${styles.total}`}>
-                        <span>
-                          <strong>Gross Total:</strong>
-                        </span>
-                        <span>
-                          <strong>
-                            ₹{invoice.grossTotal?.toLocaleString("en-IN")}
-                          </strong>
-                        </span>
+                      <div className={styles.invoiceMeta}>
+                        <p>Date: {quote.invoiceDate}</p>
+                        <p>Valid Until: {quote.validUntil}</p>
                       </div>
                     </div>
+                    {/* Rest of quote card similar to invoice card */}
                   </div>
-
-                  <div className={styles.invoiceServices}>
-                    <h5>Services ({invoice.lineItems?.length || 0} items):</h5>
-                    <div className={styles.servicesList}>
-                      {invoice.lineItems?.slice(0, 2).map((item, index) => (
-                        <div key={index} className={styles.serviceItem}>
-                          <span>{item.particular}</span>
-                          <span>₹{item.amount?.toLocaleString("en-IN")}</span>
-                        </div>
-                      ))}
-                      {invoice.lineItems?.length > 2 && (
-                        <div className={styles.moreServices}>
-                          +{invoice.lineItems.length - 2} more services
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className={styles.invoiceActions}>
-                    <Link
-                      href={`/invoices/${invoice.propertyId}?invoiceId=${invoice._id}`}
-                      className={styles.viewInvoiceBtn}
-                    >
-                      View & Download
-                    </Link>
-                    <Link
-                      href={`/invoices/${invoice.propertyId}?edit=true&invoiceId=${invoice._id}`}
-                      className={styles.editInvoiceBtn}
-                    >
-                      Edit
-                    </Link>
-                    <button
-                      onClick={() => handleDeleteInvoice(invoice._id)}
-                      className={styles.deleteInvoiceBtn}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
+                ))}
             </div>
           )}
         </div>

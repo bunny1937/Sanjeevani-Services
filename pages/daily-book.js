@@ -12,6 +12,7 @@ const DailyBook = () => {
   const [filteredEntries, setFilteredEntries] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOrder, setSortOrder] = useState("desc");
+  const [selectedDate, setSelectedDate] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -51,7 +52,7 @@ const DailyBook = () => {
   }, []);
 
   useEffect(() => {
-    // Filter and sort entries whenever entries, searchTerm, or sortOrder changes
+    // Filter and sort entries whenever entries, searchTerm, selectedDate, or sortOrder changes
     let filtered = [...entries]; // Create a copy to avoid mutating original
 
     // Apply search filter
@@ -85,6 +86,15 @@ const DailyBook = () => {
       });
     }
 
+    // Apply date filter
+    if (selectedDate) {
+      filtered = filtered.filter((entry) => {
+        if (!entry.date) return false;
+        const entryDate = new Date(entry.date).toISOString().split("T")[0];
+        return entryDate === selectedDate;
+      });
+    }
+
     // Apply date sorting
     filtered.sort((a, b) => {
       const dateA = new Date(a.date || 0);
@@ -93,7 +103,7 @@ const DailyBook = () => {
     });
 
     setFilteredEntries(filtered);
-  }, [entries, searchTerm, sortOrder]);
+  }, [entries, searchTerm, selectedDate, sortOrder]);
 
   const fetchData = async () => {
     try {
@@ -914,6 +924,24 @@ const DailyBook = () => {
                 className={styles.searchInput}
               />
             </div>
+            <div className={styles.dateFilterContainer}>
+              <label>Filter by Date:</label>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className={styles.dateFilterInput}
+              />
+              {selectedDate && (
+                <button
+                  onClick={() => setSelectedDate("")}
+                  className={styles.clearDateBtn}
+                  title="Clear date filter"
+                >
+                  ×
+                </button>
+              )}
+            </div>
             <div className={styles.sortContainer}>
               <label>Sort by Date:</label>
               <select
@@ -927,7 +955,7 @@ const DailyBook = () => {
             </div>
           </div>
           <span className={styles.recordCount}>
-            {searchTerm
+            {searchTerm || selectedDate
               ? `${filteredEntries.length} of ${entries.length}`
               : `${entries.length}`}{" "}
             records
@@ -953,8 +981,8 @@ const DailyBook = () => {
               {entries.length === 0 ? (
                 <tr>
                   <td colSpan="10" className={styles.noData}>
-                    {searchTerm
-                      ? "No entries found matching your search."
+                    {searchTerm || selectedDate
+                      ? "No entries found matching your filters."
                       : "No entries found. Add your first daily book entry to get started."}
                   </td>
                 </tr>

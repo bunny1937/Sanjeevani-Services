@@ -47,6 +47,68 @@ export default async function handler(req, res) {
 
     if (req.method === "GET") {
       const services = await Service.find({}).lean();
+
+      // If requesting service overview with property counts
+      if (req.query.overview === "true") {
+        // Import Property model
+        const PropertySchema = new mongoose.Schema(
+          {
+            name: String,
+            keyPerson: String,
+            contact: String,
+            location: String,
+            area: String,
+            serviceType: String,
+            amount: Number,
+            serviceDate: Date,
+            serviceDetails: Object,
+            isOnHold: Boolean,
+          },
+          { timestamps: true }
+        );
+
+        const Property =
+          mongoose.models.Property ||
+          mongoose.model("Property", PropertySchema, "properties");
+
+        // Get all properties
+        const properties = await Property.find({}).lean();
+
+        // Create service overview with property counts and details
+        const serviceOverview = await Promise.all(
+          services.map(async (service) => {
+            const serviceProperties = properties.filter(
+              (prop) => prop.serviceType === service.name
+            );
+
+            return {
+              _id: service._id,
+              name: service.name,
+              description: service.description,
+              active: service.active,
+              propertyCount: serviceProperties.length,
+              properties: serviceProperties.map((prop) => ({
+                _id: prop._id,
+                name: prop.name,
+                keyPerson: prop.keyPerson,
+                contact: prop.contact,
+                location: prop.location,
+                area: prop.area,
+                amount: prop.amount,
+                serviceDate: prop.serviceDate,
+                isOnHold: prop.isOnHold,
+                statusDisplay: prop.isOnHold ? "On Hold" : "Active",
+              })),
+            };
+          })
+        );
+
+        return res.status(200).json({
+          services: services,
+          serviceOverview: serviceOverview,
+        });
+      }
+
       return res.status(200).json({
         services: services,
       });

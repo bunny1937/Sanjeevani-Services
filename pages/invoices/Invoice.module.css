@@ -1055,7 +1055,8 @@
 }
 
 .generateInvoiceBtn,
-.viewPropertyBtn {
+.viewPropertyBtn,
+.generateQuoteBtn {
   padding: 10px 16px;
   border-radius: 5px;
   text-decoration: none;
@@ -1066,7 +1067,8 @@
   transition: background-color 0.3s;
 }
 
-.generateInvoiceBtn {
+.generateInvoiceBtn,
+.generateQuoteBtn {
   background: #3498db;
   color: white;
 }

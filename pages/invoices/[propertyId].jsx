@@ -21,6 +21,7 @@ export default function InvoicePage() {
       "Targeted Towards - Cockroaches, Home Spiders, Ants and other minor - major pests.",
     contractDuration: "1 Year",
     subject: "",
+    documentType: "invoice",
     includeServiceHistory: false,
     includeSpecialNotes: {
       includeSpecialTreatment: false,
@@ -36,21 +37,21 @@ export default function InvoicePage() {
 
   useEffect(() => {
     if (propertyId) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const docType = urlParams.get("type") || "invoice";
+
       fetch(`/api/property-details?propertyId=${propertyId}`)
         .then((res) => res.json())
         .then((data) => {
-          setPropertyData(data);
           const property = data.property;
           const serviceHistory = data.serviceHistory || [];
 
-          // Initialize with proper structure based on service type
+          let defaultSubject =
+            docType === "quote" ? "SERVICE QUOTATION" : "SERVICE INVOICE";
           let defaultLineItems = [];
-          let defaultSubject = "SERVICE QUOTATION";
 
           if (property.serviceType === "Pest Control Service") {
             defaultSubject = "YEARLY PEST CONTROL SERVICE PLAN";
-
-            // Create single line item with combined services
             defaultLineItems = [
               {
                 srNo: 1,
@@ -130,9 +131,11 @@ export default function InvoicePage() {
             totalAmount,
             grossTotal: totalAmount - discountAmount,
             subject: defaultSubject,
+            documentType: docType,
             includeServiceHistory: serviceHistory.length > 0,
           }));
 
+          setPropertyData(data); // ✅ store fetched property data
           setLoading(false);
         })
         .catch((error) => {
@@ -164,6 +167,7 @@ export default function InvoicePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           propertyId,
+          documentType: editable.documentType,
           customLineItems: editable.customLineItems,
           customDiscount: {
             percentage: editable.discount.percentage,
@@ -257,150 +261,6 @@ export default function InvoicePage() {
       srNo: i + 1,
     }));
     setEditable({ ...editable, customLineItems: renumberedItems });
-  };
-  const createBlankInvoice = () => {
-    setEditable({
-      discount: { percentage: 10, amount: 0 },
-      customLineItems: [
-        {
-          srNo: 1,
-          particular: "",
-          serviceDue: "",
-          rate: "",
-          amount: 0,
-          totalAmount: 0,
-        },
-      ],
-      notes: "Dates would be Forwarded with Commencement of Contract.",
-      specialNote:
-        "Note: under these treatment we follow special Herbal Treatment.",
-      targetedPests:
-        "Targeted Towards - Cockroaches, Home Spiders, Ants and other minor - major pests.",
-      contractDuration: "1 Year",
-      subject: "",
-      includeServiceHistory: false,
-      includeSpecialNotes: {
-        includeSpecialTreatment: false,
-        includeTargetedPests: false,
-        specialTreatmentNote:
-          "Note: under these treatment we follow special Herbal Treatment.",
-        targetedPestsNote:
-          "Targeted Towards - Cockroaches, Home Spiders, Ants and other minor - major pests.",
-      },
-    });
-
-    // Clear property data to show blank invoice
-    setPropertyData({
-      property: {
-        name: "",
-        keyPerson: "",
-        contact: "",
-        location: "",
-        serviceType: "",
-        amount: 0,
-        serviceDate: new Date().toISOString().split("T")[0],
-      },
-      serviceHistory: [],
-    });
-  };
-
-  // 5. Update the addLineItem function:
-
-  // 6. Add preset templates function:
-
-  const loadPresetTemplate = (serviceType) => {
-    let template = {};
-
-    switch (serviceType) {
-      case "pest-control":
-        template = {
-          subject: "YEARLY PEST CONTROL SERVICE PLAN",
-          customLineItems: [
-            {
-              srNo: 1,
-              particular:
-                "Professional Pest Control Management Service:\nType : General\n\nComprehensive Inspection of Property to\nIdentify Pest Activity & Assess the Extent of\nInfestation.\n\nScope of Work :\n\n1. Rodent (Rat) Management\n   (Key Infestation Areas: Garbage Zone & Garden)\n2. Spray Treatment Focused on Common Pest\n   Hotspots (according to inspection).\n   Targeted Towards - Cockroaches, Home Spiders,\n   Ants and other minor - major pests.\n   Note: under these treatment we follow special\n   Herbitical Treatment.",
-              serviceDue: "every 2 months\n\nevery 2 months",
-              rate: "Rs.1500/month\n\nRs.2000/month",
-              amount: 21000,
-            },
-          ],
-          contractDuration: "1 Year",
-          includeSpecialNotes: {
-            includeSpecialTreatment: true,
-            includeTargetedPests: true,
-            specialTreatmentNote:
-              "Note: under these treatment we follow special Herbal Treatment.",
-            targetedPestsNote:
-              "Targeted Towards - Cockroaches, Home Spiders, Ants and other minor - major pests.",
-          },
-        };
-        break;
-
-      case "water-tank":
-        template = {
-          subject: "WATER TANK CLEANING SERVICE QUOTATION",
-          customLineItems: [
-            {
-              srNo: 1,
-              particular:
-                "Water Tank Cleaning Service\n\nComplete cleaning and sanitization\nDisinfection and water quality testing\nPump and pipeline maintenance",
-              serviceDue: "Annual Service",
-              rate: "Rs.5000",
-              amount: 5000,
-            },
-          ],
-          contractDuration: "1 Year",
-        };
-        break;
-
-      case "motor-repair":
-        template = {
-          subject: "MOTOR REPAIR & REWINDING SERVICE QUOTATION",
-          customLineItems: [
-            {
-              srNo: 1,
-              particular:
-                "Motor Repairing & Rewinding Service\n\nComplete diagnosis and repair\nRewinding if required\nTesting and quality assurance\nWarranty coverage",
-              serviceDue: "As Required",
-              rate: "Rs.3000",
-              amount: 3000,
-            },
-          ],
-          contractDuration: "As Required",
-        };
-        break;
-
-      default:
-        template = {
-          subject: "SERVICE QUOTATION",
-          customLineItems: [
-            {
-              srNo: 1,
-              particular:
-                "Professional Service\n\nService as per requirements\nQuality assurance\nTimely completion",
-              serviceDue: "As Required",
-              rate: "Rs.1000",
-              amount: 1000,
-            },
-          ],
-          contractDuration: "1 Year",
-        };
-    }
-
-    const totalAmount = template.customLineItems.reduce(
-      (sum, item) => sum + item.amount,
-      0
-    );
-    const discountAmount = Math.round((totalAmount * 10) / 100);
-
-    setEditable((prev) => ({
-      ...prev,
-      ...template,
-      discount: { percentage: 10, amount: discountAmount },
-      totalAmount,
-      grossTotal: totalAmount - discountAmount,
-    }));
   };
 
   const regenerateFromServiceHistory = () => {
@@ -759,7 +619,7 @@ export default function InvoicePage() {
             <span>SERVICES</span>
           </div>
           <div className={styles.invoiceTitle}>
-            <h2>QUOTE&apos;</h2>
+            <h2>{editable.documentType === "quote" ? "QUOTE" : "INVOICE"}</h2>
           </div>
         </div>
 
@@ -782,11 +642,17 @@ export default function InvoicePage() {
               <strong>Date:</strong> {currentDate}
             </p>
             <p>
-              <strong>Quotation No:</strong> {quotationNumber}
+              <strong>
+                {editable.documentType === "quote" ? "Quotation" : "Invoice"}{" "}
+                No:
+              </strong>{" "}
+              {quotationNumber}
             </p>
-            <p>
-              <strong>Work Order No:</strong>
-            </p>
+            {editable.documentType === "invoice" && (
+              <p>
+                <strong>Work Order No:</strong>
+              </p>
+            )}
           </div>
         </div>
 
@@ -804,7 +670,9 @@ export default function InvoicePage() {
             <tr>
               <th>SR. No.</th>
               <th>PARTICULAR</th>
-              <th>SERVICE DUE</th>
+              <th>
+                {editable.documentType === "quote" ? "QUANTITY" : "SERVICE DUE"}
+              </th>
               <th>RATE</th>
               <th>AMOUNT</th>
             </tr>

@@ -2,8 +2,11 @@ import { useState, useEffect } from "react";
 
 const Services = () => {
   const [services, setServices] = useState([]);
+  const [serviceOverview, setServiceOverview] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedService, setSelectedService] = useState(null);
+  const [showServiceDetails, setShowServiceDetails] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingService, setEditingService] = useState(null);
   const [formData, setFormData] = useState({
@@ -37,17 +40,20 @@ const Services = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch("/api/services");
+      const response = await fetch("/api/services?overview=true");
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
-      const servicesList = data.services || data || [];
+      const servicesList = data.services || [];
+      const overviewList = data.serviceOverview || [];
       setServices(Array.isArray(servicesList) ? servicesList : []);
+      setServiceOverview(Array.isArray(overviewList) ? overviewList : []);
     } catch (error) {
       console.error("Error fetching services:", error);
       setError(error.message);
       setServices([]);
+      setServiceOverview([]);
     } finally {
       setLoading(false);
     }
@@ -280,6 +286,16 @@ const Services = () => {
     }));
   };
 
+  const handleCardClick = (serviceData) => {
+    setSelectedService(serviceData);
+    setShowServiceDetails(true);
+  };
+
+  const closeServiceDetails = () => {
+    setSelectedService(null);
+    setShowServiceDetails(false);
+  };
+
   const handleSaveClick = () => {
     if (!formData.name.trim() || !formData.description.trim()) {
       alert("Please fill in all required fields");
@@ -347,7 +363,397 @@ const Services = () => {
           </button>
         </div>
       </div>
+      {/* Service Overview Cards */}
+      {!loading && serviceOverview.length > 0 && (
+        <div style={{ marginBottom: "30px" }}>
+          <h2 style={{ margin: "0 0 20px 0", color: "#333", fontSize: "18px" }}>
+            Service Overview
+          </h2>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+              gap: "15px",
+              marginBottom: "20px",
+            }}
+          >
+            {serviceOverview.map((serviceData) => (
+              <div
+                key={serviceData._id}
+                onClick={() => handleCardClick(serviceData)}
+                style={{
+                  backgroundColor: "white",
+                  borderRadius: "12px",
+                  padding: "20px",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  border: "1px solid #f0f0f0",
+                  minHeight: "80px",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow =
+                    "0 4px 12px rgba(0,0,0,0.12)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow =
+                    "0 2px 8px rgba(0,0,0,0.08)";
+                }}
+              >
+                {/* Service Name */}
+                <h3
+                  style={{
+                    margin: 0,
+                    color: "#333",
+                    fontSize: "16px",
+                    fontWeight: "600",
+                    lineHeight: "1.3",
+                  }}
+                >
+                  {serviceData.name}
+                </h3>
+                {/* Property Count */}
+                <div style={{ marginTop: "8px", display: "flex", gap: "10px" }}>
+                  <span
+                    style={{
+                      fontSize: "24px",
+                      fontWeight: "bold",
+                      color: "#333",
+                      lineHeight: "1",
+                    }}
+                  >
+                    {serviceData.propertyCount}
+                  </span>
+                  <p
+                    style={{
+                      margin: "4px 0 0 0",
+                      color: "#666",
+                      fontSize: "13px",
+                      fontWeight: "400",
+                    }}
+                  >
+                    {serviceData.propertyCount === 1
+                      ? "Property"
+                      : "Properties"}
+                  </p>
+                </div>
+                {/* Properties Label */}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {/* Service Details Modal */}
+      {showServiceDetails && selectedService && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: "15px",
+              width: "90%",
+              maxWidth: "1000px",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
+            }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: "25px 30px",
+                borderBottom: "2px solid #e0e0e0",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                backgroundColor: "#f8f9fa",
+                borderRadius: "15px 15px 0 0",
+              }}
+            >
+              <div>
+                <h2
+                  style={{
+                    margin: "0 0 5px 0",
+                    color: "#333",
+                    fontSize: "24px",
+                  }}
+                >
+                  {selectedService.name}
+                </h2>
+                <p style={{ margin: 0, color: "#666", fontSize: "16px" }}>
+                  {selectedService.propertyCount}{" "}
+                  {selectedService.propertyCount === 1
+                    ? "Property"
+                    : "Properties"}
+                </p>
+              </div>
+              <button
+                onClick={closeServiceDetails}
+                style={{
+                  backgroundColor: "#dc3545",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "50%",
+                  width: "40px",
+                  height: "40px",
+                  cursor: "pointer",
+                  fontSize: "18px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                ×
+              </button>
+            </div>
 
+            {/* Modal Content */}
+            <div style={{ padding: "30px" }}>
+              {selectedService.properties.length === 0 ? (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "40px",
+                    color: "#666",
+                    fontSize: "16px",
+                  }}
+                >
+                  <div style={{ fontSize: "48px", marginBottom: "15px" }}>
+                    📋
+                  </div>
+                  <p>No properties are using this service yet.</p>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "repeat(auto-fill, minmax(350px, 1fr))",
+                    gap: "20px",
+                  }}
+                >
+                  {selectedService.properties.map((property) => (
+                    <div
+                      key={property._id}
+                      style={{
+                        backgroundColor: "#f8f9fa",
+                        borderRadius: "10px",
+                        padding: "20px",
+                        border: "1px solid #e0e0e0",
+                        transition: "all 0.2s ease",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                          marginBottom: "15px",
+                        }}
+                      >
+                        <h4
+                          style={{
+                            margin: 0,
+                            color: "#333",
+                            fontSize: "16px",
+                            fontWeight: "600",
+                          }}
+                        >
+                          {property.name}
+                        </h4>
+                        <span
+                          style={{
+                            padding: "3px 8px",
+                            borderRadius: "12px",
+                            fontSize: "11px",
+                            fontWeight: "bold",
+                            backgroundColor: property.isOnHold
+                              ? "#fff3cd"
+                              : "#d1ecf1",
+                            color: property.isOnHold ? "#856404" : "#0c5460",
+                          }}
+                        >
+                          {property.statusDisplay}
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "8px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                          }}
+                        >
+                          <span
+                            style={{
+                              color: "#666",
+                              fontSize: "13px",
+                              minWidth: "80px",
+                            }}
+                          >
+                            👤 Contact:
+                          </span>
+                          <span
+                            style={{
+                              color: "#333",
+                              fontSize: "13px",
+                              fontWeight: "500",
+                            }}
+                          >
+                            {property.keyPerson}
+                          </span>
+                        </div>
+
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                          }}
+                        >
+                          <span
+                            style={{
+                              color: "#666",
+                              fontSize: "13px",
+                              minWidth: "80px",
+                            }}
+                          >
+                            📞 Phone:
+                          </span>
+                          <span style={{ color: "#333", fontSize: "13px" }}>
+                            {property.contact}
+                          </span>
+                        </div>
+
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                          }}
+                        >
+                          <span
+                            style={{
+                              color: "#666",
+                              fontSize: "13px",
+                              minWidth: "80px",
+                            }}
+                          >
+                            📍 Location:
+                          </span>
+                          <span style={{ color: "#333", fontSize: "13px" }}>
+                            {property.location}
+                          </span>
+                        </div>
+
+                        {property.area && (
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                            }}
+                          >
+                            <span
+                              style={{
+                                color: "#666",
+                                fontSize: "13px",
+                                minWidth: "80px",
+                              }}
+                            >
+                              📏 Area:
+                            </span>
+                            <span style={{ color: "#333", fontSize: "13px" }}>
+                              {property.area}
+                            </span>
+                          </div>
+                        )}
+
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                          }}
+                        >
+                          <span
+                            style={{
+                              color: "#666",
+                              fontSize: "13px",
+                              minWidth: "80px",
+                            }}
+                          >
+                            💰 Amount:
+                          </span>
+                          <span
+                            style={{
+                              color: "#28a745",
+                              fontSize: "13px",
+                              fontWeight: "600",
+                            }}
+                          >
+                            ₹{property.amount || 0}
+                          </span>
+                        </div>
+
+                        {property.serviceDate && !property.isOnHold && (
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                            }}
+                          >
+                            <span
+                              style={{
+                                color: "#666",
+                                fontSize: "13px",
+                                minWidth: "80px",
+                              }}
+                            >
+                              📅 Service:
+                            </span>
+                            <span style={{ color: "#333", fontSize: "13px" }}>
+                              {new Date(
+                                property.serviceDate
+                              ).toLocaleDateString("en-GB", {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       {/* Service Form Modal */}
       {showForm && (
         <div
